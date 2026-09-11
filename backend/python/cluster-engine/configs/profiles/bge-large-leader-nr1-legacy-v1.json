@@ -1,0 +1,23 @@
+{
+  "profile_id": "bge-large-leader-nr1-legacy-v1",
+  "algorithm": "leader",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "threshold": 0.28886568140530455,
+    "metric": "cosine"
+  },
+  "features": {
+    "beta": 0.7703827832533531,
+    "n_results": 2,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/LeaderOptimizer_-1_0_best_param.json",
+  "source_sha256": "d8fc32041cd7b1010e9c6fb09db8561f36f28febea83c1563de8cd2133dde6e1",
+  "max_samples": 500
+}

@@ -1,0 +1,1002 @@
+% !TEX program = xelatex
+% !BIB program = bibtex
+%==================================================================%
+% 《计算机学报》(Chinese Journal of Computers) 投稿模板格式        %
+% 依据官方 CjC_template_tex.tex 改造，保留论文全部内容             %
+% 编译方式：xelatex -> bibtex -> xelatex -> xelatex                %
+% 注意：需与本文件同目录的 CjC.cls、ctex.sty、captionhack.sty、   %
+%       gbt7714.sty、gbt7714-numerical.bst、picins.sty、           %
+%       flushend.sty（桩文件）、ref.bib 配合编译                   %
+%==================================================================%
+\documentclass[10.5pt,compsoc,UTF8]{CjC}
+\usepackage{ctex}
+\usepackage{graphicx}
+\usepackage{footmisc}
+\usepackage{subfigure}
+\usepackage{url}
+\usepackage{multirow}
+\usepackage{multicol}
+\usepackage{amsmath,amsthm}
+\usepackage{amssymb,amsfonts}
+\usepackage{booktabs}
+\usepackage{color}
+\usepackage{ccaption}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{caption}
+\usepackage{xcolor,stfloats}
+\usepackage{comment}
+\setcounter{page}{1}
+\usepackage{cuted}
+\usepackage{captionhack}
+\usepackage{gbt7714}
+\usepackage{arydshln}
+\usepackage{colortbl}
+%===============================%
+% ---- 论文所需补充宏包 ---- %
+\usepackage{tikz}
+\usetikzlibrary{shapes.geometric}
+\usetikzlibrary{calc}
+\usepackage{mathtools}
+\usepackage{enumitem}
+\usepackage{adjustbox}
+\usepackage[normalem]{ulem}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+% 统计图统一由 PGFPlots 直接绘制（不再粘贴 Python 输出的 PNG 图片）
+% 注意：本文档为 TiKZiT 导出的流程图设置了 every picture/.style={x=1pt,y=1pt}，
+%       该全局样式会破坏 pgfplots 的坐标变换（图被放大数倍），
+%       故 PGFPlots 统计图一律用 \pgs 宏包裹，在局部清除该样式。
+\newcommand{\pgs}[1]{\begingroup\tikzset{every picture/.style={}}#1\endgroup}
+\pgfplotsset{colormap={heat}{rgb255=(49,54,149) rgb255=(69,117,180) rgb255=(116,173,209) rgb255=(171,217,233) rgb255=(254,224,144) rgb255=(253,174,97) rgb255=(244,109,67) rgb255=(215,48,39) rgb255=(165,0,38)}}
+\pgfplotsset{colormap={cls4}{rgb255=(31,119,180) rgb255=(255,127,14) rgb255=(44,160,44) rgb255=(214,39,40)}}
+% 预测失败差异图专用 colormap：meta=0（预测正确）→ 浅灰，meta=1（预测失败）→ 红色
+\pgfplotsset{colormap={failmap}{rgb255=(229,229,229) rgb255=(214,39,40)}}
+% Optuna 搜索过程图专用 colormap（plasma，7 停靠）：按检索数量 k 着色
+\pgfplotsset{colormap={plasma7}{rgb255=(13,8,135) rgb255=(92,1,166) rgb255=(156,23,158) rgb255=(204,71,120) rgb255=(237,121,83) rgb255=(253,180,47) rgb255=(240,249,33)}}
+
+% ========== SPEAR 实验设计图（TiKZiT 导出 TikZ 源码，直接嵌入）==========
+% 样式与坐标来自 spear_experiment.tikzstyles / spear_experiment.tikz
+% （已去除 TiKZiT 专用的 tikzit category 键；坐标单位为 pt，需 1pt/1 单位缩放）
+\tikzset{every picture/.style={x=1pt, y=1pt}}
+\tikzstyle{node-base}=[shape=rectangle, fill={rgb,255: red,255; green,255; blue,255}, draw={rgb,255: red,51; green,51; blue,51}, text={rgb,255: red,51; green,51; blue,51}, line width=0.8, rounded corners=4, inner sep=2, font=\footnotesize, align=center]
+\tikzstyle{cont-base}=[node-base, line width=0.8, inner sep=1, font=\scriptsize, text={rgb,255: red,144; green,150; blue,158}]
+\tikzstyle{cont-top}=[cont-base, minimum width=400, minimum height=58, fill={rgb,255: red,243; green,245; blue,248}, draw={rgb,255: red,185; green,194; blue,207}]
+\tikzstyle{cont-rep}=[cont-base, minimum width=400, minimum height=60, fill={rgb,255: red,243; green,240; blue,249}, draw={rgb,255: red,183; green,169; blue,216}, text={rgb,255: red,141; green,128; blue,172}]
+\tikzstyle{cont-clu}=[cont-base, minimum width=400, minimum height=60, fill={rgb,255: red,240; green,245; blue,240}, draw={rgb,255: red,169; green,195; blue,169}, text={rgb,255: red,127; green,160; blue,127}]
+\tikzstyle{cont-data}=[cont-base, minimum width=400, minimum height=64, fill={rgb,255: red,243; green,245; blue,248}, draw={rgb,255: red,185; green,194; blue,207}]
+\tikzstyle{cont-label}=[shape=rectangle, draw=none, fill=none, text={rgb,255: red,144; green,150; blue,158}, font=\scriptsize, inner sep=1]
+\tikzstyle{cont-label-rep}=[cont-label, text={rgb,255: red,141; green,128; blue,172}]
+\tikzstyle{cont-label-clu}=[cont-label, text={rgb,255: red,127; green,160; blue,127}]
+\tikzstyle{box-flow}=[node-base, line width=1, minimum width=150, minimum height=20, fill={rgb,255: red,222; green,232; blue,245}, draw={rgb,255: red,74; green,111; blue,165}]
+\tikzstyle{box-data}=[node-base, line width=1, minimum width=140, minimum height=34, fill={rgb,255: red,226; green,234; blue,245}, draw={rgb,255: red,82; green,114; blue,159}]
+\tikzstyle{box-base}=[node-base, line width=1, minimum width=140, minimum height=28, fill={rgb,255: red,237; green,240; blue,236}, draw={rgb,255: red,140; green,155; blue,138}, dashed]
+\tikzstyle{box-full}=[node-base, line width=1, minimum width=140, minimum height=28, fill={rgb,255: red,201; green,219; blue,240}, draw={rgb,255: red,47; green,91; blue,150}]
+\tikzstyle{box-rep-fixed}=[node-base, line width=1, minimum width=130, minimum height=30, fill={rgb,255: red,231; green,224; blue,244}, draw={rgb,255: red,106; green,90; blue,158}, dashed]
+\tikzstyle{box-exp}=[node-base, line width=1, minimum width=130, minimum height=30, fill={rgb,255: red,247; green,240; blue,220}, draw={rgb,255: red,179; green,154; blue,82}]
+\tikzstyle{box-clu-fixed}=[node-base, line width=1, minimum width=130, minimum height=30, fill={rgb,255: red,223; green,239; blue,223}, draw={rgb,255: red,94; green,143; blue,94}, dashed]
+\tikzstyle{edge-flow}=[draw={rgb,255: red,96; green,102; blue,114}, ->, -latex, line width=1]
+\tikzstyle{edge-cross-rep}=[draw={rgb,255: red,106; green,90; blue,158}, ->, -latex, line width=1]
+\tikzstyle{edge-cross-clu}=[draw={rgb,255: red,94; green,143; blue,94}, ->, -latex, line width=1]
+
+%=======设置奇偶页页眉=======%
+% 请将"作者姓名等"替换为真实作者姓名（第一作者 + 等）
+\headevenname{\mbox{\quad} \hfill  \mbox{\zihao{5-}{计\quad \quad 算\quad \quad 机\quad \quad 学\quad \quad 报} \hspace {50mm} \mbox{2026 年}}}%
+\headoddname{? 期 \hfill
+作者姓名等：SPEAR 语义净化与增强聚类框架}
+%=======设置奇偶页页眉=======%
+
+\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+\setcounter{footnote}{0}
+\renewcommand\footnotelayout{\zihao{5-}}
+\newtheoremstyle{mystyle}{0pt}{0pt}{\normalfont}{1em}{\bf}{}{1em}{}
+\theoremstyle{mystyle}
+\renewcommand\figurename{figure~}
+\renewcommand{\thesubfigure}{(\alph{subfigure})}
+\newcommand{\upcite}[1]{\textsuperscript{\cite{#1}}}
+\renewcommand{\labelenumi}{(\arabic{enumi})}
+\newcommand{\tabincell}[2]{\begin{tabular}{@{}#1@{}}#2\end{tabular}}
+\newcommand{\abc}{\color{white}\vrule width 2pt}
+\renewcommand{\bibsection}{}
+\makeatletter
+\renewcommand{\@biblabel}[1]{[#1]\hfill}
+\makeatother
+\setlength\parindent{2em}
+
+% ========== 实验表格辅助命令 ==========%
+% 分组标题行背景色（蓝灰）
+\definecolor{groupbg}{RGB}{70,90,120}
+% 最优值单元格背景色（浅黄）
+\definecolor{bestbg}{RGB}{255,248,220}
+% 分组标题行：蓝灰底 + 白色加粗文字，跨全部列
+\newcommand{\grouprow}[2]{\multicolumn{#1}{>{\columncolor{groupbg}\color{white}\bfseries}l}{#2}}
+% 最优值单元格：浅黄底 + 加粗
+\newcommand{\bestcell}[1]{\cellcolor{bestbg}\textbf{#1}}
+% PCA 散点图统一轴样式
+\pgfplotsset{pca axis/.style={
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\tiny},
+    label style={font=\scriptsize},
+    title style={font=\scriptsize\bfseries},
+    grid style={gray!20},
+}}
+
+% 图表编号使用中文"图N"/"表N"（覆盖 captionhack 的英文 Fig./Table）
+% 注意：CjC.cls 的 \zihao 只识别 "5-" 写法，\zihao{-5} 是无效命令
+\makeatletter
+\renewcommand{\fnum@figure}{{\zihao{5-}\textbf{图\thefigure}}}
+\renewcommand{\fnum@table}{{\zihao{5-}\textbf{表\thetable}}}
+\makeatother
+
+\pagestyle{CjCheadings}
+\setmainfont{Times New Roman}
+
+% ========== 数学命令 ==========
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\bone}{\mathbf{1}}
+
+%===========================================================%
+\begin{document}
+
+\hyphenpenalty=50000
+\setlength{\emergencystretch}{3em}
+\makeatletter
+\newcommand\mysmall{\@setfontsize\mysmall{7}{9.5}}
+\newenvironment{tablehere}
+  {\def\@captype{table}}
+
+\let\temp\footnote
+\renewcommand \footnote[1]{\temp{\zihao{5-}#1}}
+
+%=======设置首页页眉=======%
+% 卷、期、年、月请按编辑部排定结果填写（投稿时可保留 ?? 占位）
+\thispagestyle{empty}%
+\begin{table*}[!t]
+\vspace {-13mm}
+\onecolumn
+\noindent\begin{tabular}{p{168mm}}
+\zihao{5-}
+第??卷\quad 第?期 \hfill 计\quad 算\quad 机\quad 学\quad 报\hfill Vol. ??  No. ?\\
+\zihao{5-}
+20??年?月 \hfill CHINESE JOURNAL OF COMPUTERS \hfill ???. 20??\\
+\hline\hline\end{tabular}\end{table*}
+%=======设置首页页眉=======%
+
+%中文标题、作者与注脚
+{
+\centering
+\vspace {11mm}
+{\zihao{2} \heiti SPEAR：一种面向领域短文本的语义净化与增强聚类框架}
+
+\vskip 5mm
+
+{\zihao{3}\fangsong 作者姓名$^{1),2)}$\quad  作者姓名$^{1)}$ \quad 作者姓名$^{1)}$}
+% 请填写：收稿日期（投稿时不填）、基金资助、全部作者简介、第1作者手机号码
+% \footnote{\noindent \zihao{6}\songti 收稿日期：\quad \quad -\quad -\quad ；最终修改稿收到日期：\quad \quad -\quad -\quad .*投稿时不填写此项*. 本课题得到……基金中文完整名称(No.项目号)、……基金中文完整名称(No.项目号)资助.\textsf{作者姓名1(通信作者)}，性别，xxxx年生，学位(或目前学历)，职称，是/否计算机学会(CCF)会员（会员号：……），主要研究领域为*****、****.E-mail: **************.\textsf{作者姓名2}，性别，xxxx年生，学位(或目前学历)，职称，是/否计算机学会(CCF)会员（会员号：……），主要研究领域为*****、****.E-mail: **************. \textsf{作者姓名3}，性别，xxxx年生，学位(或目前学历)，职称，是/否计算机学会(CCF)会员（会员号：……），主要研究领域为*****、****.E-mail: **************.（给出的电子邮件地址应不会因出国、毕业、更换工作单位等原因而变动。请给出所有作者的电子邮件)}
+% 第1作者手机号码(投稿时必须提供，以便紧急联系，发表时会删除): ………
+
+\vspace {1mm}
+
+\zihao{6}{$^{1)}$（单位全名 部门（系）全名，城市（或直辖市） 邮编）}% 国家为中国可以不写
+
+\zihao{6}{$^{2)}$（单位全名 部门（系）全名，城市（或直辖市） 邮编）}
+}%中文标题、作者与注脚
+
+\vskip 5mm
+
+\zihao{5-}{
+\setlength{\baselineskip}{16pt}\selectfont{
+\noindent {\heiti 摘\quad 要\quad }
+领域短文本聚类在工程质量巡检、设备故障诊断等工业场景中具有重要应用价值。此类短文本的类别体系未知且随业务持续演化，无监督聚类是发现与组织其类别信息的核心手段。然而，文本中高度密集的领域专名、工程编号、时空信息等非类别语义成分，在通用预训练语言模型的编码过程中系统性稀释了核心类别信号，造成嵌入空间类内距离膨胀与类间边界模糊并存，聚类算法难以在此类失真的距离结构上恢复真实的类别划分。本文首先从注意力机制的角度形式化分析了噪声对嵌入距离结构的破坏效应，论证了该破坏对下游聚类算法的不可补偿性，由此确立在输入层而非表示层进行语义净化的设计原则。进而，本文提出语义净化与增强表示聚类框架 \textbf{SPEAR}（Semantic Purification and Enhanced Augmented Representation），遵循``净化—增强—聚类''三阶段范式：利用大语言模型在编码前从字符序列中剥离与问题类别无关的噪声成分；从语义知识库检索浓缩文本嵌入并与原始表示加权融合，以类别语义锚点补偿净化造成的信息损失、重构距离结构；最终以增强表示驱动凝聚层次聚类完成簇划分。针对工业场景标注稀缺的约束，本文设计了基于 Tree-Structured Parzen Estimator 的超参数选择方法，仅需少量簇级标注即可自动确定最优融合权重与聚类参数。在核电质量偏差测试集（约 2 万条记录、353 类）上的实验结果表明，与直接使用通用嵌入的基线配置相比，SPEAR 将凝聚层次聚类的 ARI 从 0.155 提升至 0.281（相对提升 81.3\%）；基于 12 种嵌入模型与 9 种聚类算法的组件选择实验进一步表明，中文领域预训练嵌入是表示组件的首选，表示增强与层次/质心类聚类算法相容、与密度类算法不相容，为专名密集领域短文本聚类框架的设计与部署提供了实证依据。\par}}
+
+\vspace {5mm}
+
+\zihao{5-}{\noindent
+{\heiti 关键词 \quad }短文本聚类；语义净化；表示增强；层次聚类；大语言模型
+}\par\noindent
+\zihao{5-}{\heiti 中图法分类号\quad } TP391\rm{\quad \quad \quad }
+{\heiti 文献标识码\quad } A
+{\heiti DOI号:\quad } *投稿时不提供DOI号
+
+\vskip 5mm
+
+\begin{center}
+\zihao{3}{ \heiti SPEAR: A Semantic Purification and Enhanced Clustering Framework for Domain-Specific Short Texts}\\
+\vspace {5mm}
+\zihao{5}{ Author Name$^{1),2)}$\quad Author Name$^{1)}$ \quad Author Name$^{1)}$}\\
+\vspace {1mm}
+% 请替换为真实英文单位（城市为国家为中国可不写国家名）
+\zihao{6}{{$^{1)}$(Department of ****, University, City ZipCode, China)}}
+\zihao{6}{{$^{2)}$(Department of ****, University, City ZipCode, China)}}
+
+\end{center}
+
+\zihao{5}{
+{\noindent\bf Abstract}\quad % 模板要求约500英文单词；已按中文摘要扩充至约470词并严格对应（请作者最终核对）
+Short text clustering is of significant value in industrial scenarios such as construction quality inspection and equipment fault diagnosis. In such scenarios, the category systems of short business texts are unknown in advance and evolve continuously with the business, making unsupervised clustering the key means of discovering and organizing the category information therein. However, domain-specific short texts are dominated by non-category semantic components---named entities, engineering codes, and spatio-temporal information---which carry little category-discriminative information. During encoding by general pre-trained language models, these components systematically dilute the core category signals: low-frequency tokens such as engineering codes are assigned disproportionately large attention weights, which pushes same-category samples far apart (intra-class distance inflation) while pulling different-category samples that share the same named entity together (inter-class boundary blurring). Since the noise is nonlinearly entangled with the core semantics in the embedding space, clustering algorithms cannot recover the true category partition from such a distorted distance structure. This paper first formalizes, from the perspective of attention mechanisms, the dual destructive effect of noise on the embedding distance structure, and demonstrates its non-compensability for downstream clustering algorithms, thereby establishing the design principle of purifying semantics at the input layer rather than at the representation layer. On this basis, this paper proposes SPEAR (Semantic Purification and Enhanced Augmented Representation), an end-to-end unsupervised clustering framework for domain-specific short texts, which follows a three-stage purification--augmentation--clustering paradigm. First, SPEAR employs a large language model to strip noise components irrelevant to problem categories from the character sequence before encoding, ensuring that the attention capacity is fully allocated to core semantics. Second, it retrieves condensed texts from a semantic knowledge base and fuses their embeddings with the original representation in a weighted manner: the condensed embeddings act as category semantic anchors that compensate for the information loss caused by purification and reconstruct the distance structure, while the original embedding supplements instance-level contextual information. Finally, agglomerative hierarchical clustering with Ward's criterion is performed on the enhanced representations to obtain the cluster partition. To address the scarcity of labeled data in industrial scenarios, this paper further designs a hyper-parameter selection method based on the Tree-Structured Parzen Estimator, which requires only a small amount of cluster-level annotations to automatically determine the optimal fusion weight and clustering parameters. Experimental results on a nuclear power quality deviation test set of about 20,000 records covering 353 categories show that, compared with the baseline configuration that directly clusters general embeddings, SPEAR improves the ARI of agglomerative hierarchical clustering from 0.155 to 0.281, a relative improvement of 81.3\%. Component selection experiments based on 12 embedding models and 9 clustering algorithms further reveal that Chinese domain pre-trained embeddings are the preferred representation component, and that representation enhancement is compatible with hierarchical/centroid clustering algorithms but incompatible with density-based ones. These findings provide empirical evidence for the design and deployment of clustering frameworks for named-entity-dense domain short texts.
+\par}
+
+\vspace {5mm}
+
+\zihao{5}{
+{\noindent\bf Keywords}\quad short text clustering; semantic purification; representation enhancement; hierarchical clustering; large language models
+\par}
+
+\zihao{5}
+\vskip 1mm
+\songti % 兜底：确保正文为宋体（修复标题区组泄漏后双保险）
+% 正文进入双栏模式（cuted 的 \switchtwocolumn；这也是 CjC 类 \maketitle 的
+% 设计意图：首页标题区单栏、正文双栏，通栏表/图用 table*/figure* 原生支持）
+\switchtwocolumn
+
+\section{\heiti 引言}
+\label{sec:intro}
+
+短文本聚类是工业文本分析的核心任务之一。在核电建设、设备运维、质量管控等场景中，大量业务文本以短文本形式存在，其类别体系未知且随业务持续演化，难以依靠预定义规则或监督分类覆盖，无监督聚类因此成为发现与组织这些文本类别的关键手段。近年来，基于 Transformer 的预训练模型\cite{devlin2019,reimers2019}为短文本聚类提供了强大的表示基础，然而当这些通用嵌入直接应用于专名密集的领域短文本时，一个长期被忽略的问题浮现出来——大量与核心语义无关的工程编号、厂房代号、人员姓名等非类别信息正在系统性扭曲聚类所依赖的距离结构，进而传导为聚类性能的劣化。
+
+考虑如下一组来自核电站建造现场的巡检记录：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+  \item ``中铁八局一号堆场钢筋网片放置不规范''
+  \item ``5BRX 厂房内安全壳，BSB2818VB 墙插筋加固不牢靠''
+  \item ``工艺棚焊材库保管员杨入未及时列入焊接相关人员清单里''
+\end{itemize}
+
+每条文本的核心语义（``放置不规范''``加固不牢靠''``未列入清单''）仅占全文的极小篇幅，而其余内容——公司名称、工程编号、厂房编号、人员姓名——在类别层面不具备区分能力，却因其在语义空间中的独特嵌入位置而显著拉大了类内样本距离。同一``加固不牢靠''类别下的样本，因分布于不同工程部位而被映射到嵌入空间中相距甚远的位置。对聚类而言，这意味着：无论采用何种聚类范型，其赖以工作的距离/相似度结构已被系统性破坏。
+
+这一现象指向一个深层次问题：聚类算法（划分式、层次式、密度式等）无一例外地依赖样本间距离结构的可靠性——类内样本应相互靠近、类间样本应相互远离。而通用预训练语言模型在编码此类文本时，倾向于对文本中出现的所有实体赋予均等关注，专名与模板词的语义权重远高于其实际贡献的类别信息量，从而在嵌入空间中造成类内距离膨胀与类间边界模糊的双重破坏。本文首先从注意力机制的角度形式化分析了这一双重破坏效应，并论证了其对下游聚类算法的不可补偿性——聚类算法无法在扭曲的距离结构上恢复真实的类别划分。这一分析为聚类框架的``输入层净化''设计提供了问题建模层面的动机：与其在下游修补被噪声污染的输入空间，不如在编码前从源头剥离噪声成分。
+
+在此基础上，我们提出了面向领域短文本的语义净化与表示增强聚类框架\textbf{SPEAR}。与现有短文本聚类方法在表示层或算法层修正噪声的做法不同，SPEAR 将净化操作前置到输入层，仅让核心语义进入编码器；继而从语义知识库中检索浓缩文本嵌入，通过加权融合构造增强表示——以浓缩嵌入提供类别语义锚点，以原始嵌入补充实例级上下文信息——从而补偿净化过程遗留的距离结构偏差；最终在增强表示上执行凝聚层次聚类，完成簇划分。SPEAR 的三个阶段构成完整的聚类流水线，其表示组件与簇划分组件均可按领域适配替换。虽然 SPEAR 由核电工程质量偏差场景所驱动，但其核心模块均不依赖领域特定假设，可迁移至任意专名密集的领域短文本场景。
+
+值得注意的是，本文的落脚点是一个完整的聚类框架，而非单个聚类算法或单个表示方法。我们以``框架组件选择''的视角开展系统实验：一方面，固定簇划分组件（凝聚层次聚类），比较 12 种主流文本嵌入模型作为表示组件时的聚类性能，回答``框架应选择何种表示组件''；另一方面，固定表示组件，考察表示增强模块对 9 种不同聚类范型的差异化影响，回答``框架应搭配何种簇划分组件''。本文的主要贡献如下：
+\begin{enumerate}[leftmargin=2em,itemsep=1pt]
+  \item 我们从自注意力机制的角度形式化分析了噪声 token 对嵌入表示的支配性影响，揭示了噪声对聚类输入空间距离结构的双重破坏效应——类内距离膨胀与类间边界模糊——及其对下游聚类算法的不可补偿性，为聚类框架的``输入层净化''设计提供了问题建模层面的动机。
+  \item 我们提出了\textbf{语义净化—表示增强—层次聚类}的领域短文本聚类框架 SPEAR：在输入层利用大语言模型剥离噪声，以表示增强机制从语义知识库检索浓缩语义补偿净化损失、增强聚类，最终以增强表示驱动凝聚层次聚类完成簇划分。
+  \item 我们从框架组件选择的视角开展了系统实证研究：比较 12 种嵌入模型作为表示组件、考察表示增强模块对 9 种聚类算法的差异化影响，归纳出``中文领域预训练嵌入是首选表示组件''``模型规模无益于聚类''等可迁移的框架设计结论。
+  \item 我们设计了一种以少量标注引导的超参数选择方案，使聚类框架在标注稀缺的工业场景中可落地，并验证了语义净化与表示增强两个核心模块的互补有效性。
+\end{enumerate}
+
+% ===================================================================
+\section{\heiti 相关工作}
+\label{sec:related}
+
+\textbf{短文本聚类.} 深度聚类旨在将表示学习与聚类目标协同优化。DEC\cite{xie2016}在嵌入空间上定义 KL 散度损失以迭代锐化软聚类分配；SimCSE\cite{gao2021}与 InfoCSE\cite{wu2022}通过对比学习学习句子表示，聚焦于通用语义相似度。针对短文本的稀疏性与弱信号，Xu 等人\cite{xu2017}提出 STCC，Hadifar 等人\cite{hadifar2019}引入自训练机制，Arora 等人\cite{arora2017}提出 SIF 加权表示，Rakib 等人\cite{rakib2020}与 Zhao 等人\cite{zhao2023}（CEIL）将聚类转化为迭代分类任务，Lin 等人\cite{lin2025}（LUMI）采用多视角伪标签策略。对比学习路线（Instance-CL\cite{chen2020,he2020}、SCCL\cite{zhang2021}、EASE\cite{nishikawa2022}）主要解决表示空间的稀疏性与分离性问题。上述方法多假设预训练嵌入已包含充分的类别判别信息，且改进多发生在表示层或聚类目标层——在领域专名主导噪声的场景中，聚类所依赖的距离结构本身已被扭曲，这类改进的收益受到根本限制。与上述工作不同，本文提出的 SPEAR 是覆盖``输入净化—表示构造—簇划分''全流程的聚类框架，从源头解决距离结构扭曲问题，而非在扭曲的输入空间上修补聚类算法。
+
+\textbf{文本表示学习.} 基于 Transformer 的预训练模型\cite{devlin2019}为文本表示提供了强大的基础，Sentence-BERT\cite{reimers2019}进一步将句子编码为可用于相似度度量的稠密向量。近年来，面向通用嵌入的模型不断涌现：bge\cite{xiao2023}通过大规模中文指令微调语料提升了中文嵌入质量；E5\cite{wang2022}与 gte\cite{li2023}以弱监督对比预训练构造通用嵌入；mT5\cite{xue2021}则采用多语言 encoder-decoder 架构。在聚类框架中，嵌入模型充当表示组件，其与目标领域的匹配程度直接决定聚类输入空间的质量。上述模型在通用基准上表现优异，但其作为领域短文本聚类表示组件的适配性差异，尚未被系统刻画——这正是本文实证研究的切入点之一。
+
+\textbf{大语言模型与表示增强.} 大语言模型（LLM）在文本处理中展现出强大的指令遵循与语义理解能力\cite{brown2020,ouyang2022}，近期工作开始探索将其用于文本规范化与去噪，但将其系统性地引入领域短文本聚类流程——特别是利用其语义理解能力剥离专名噪声以服务类别划分——尚未被充分探索。检索增强生成（RAG）范式\cite{lewis2020}通过从外部知识库检索相关信息以增强生成质量，其``检索—融合''的基本思想与本文的表示增强策略在方法论层面共通：RAG 将检索知识注入解码过程，而 SPEAR 将检索到的浓缩语义嵌入作为类别语义锚点增强聚类表示构造，通过加权融合增强聚类。将检索与表示学习相结合的思想在 REALM\cite{guu2020}、kNN-LM\cite{khandelwal2019}等工作中亦有体现，但其在无监督短文本聚类场景中的系统应用仍属空白。
+
+% ===================================================================
+\section{\heiti 问题分析与理论框架}
+\label{sec:theory}
+
+聚类算法——无论划分式、层次式还是密度式——无一例外地依赖样本间距离/相似度结构的可靠性：类内样本应相互靠近、类间样本应相互远离。本节从注意力机制的角度对噪声干扰进行形式化建模，推导噪声如何扭曲聚类所依赖的距离结构，并论证该扭曲对下游聚类算法的不可补偿性，从而确立``输入层净化''的聚类框架设计原则。目标不在于提出定理级别的理论贡献，而在于建立清晰的问题分析框架，为后续方法设计提供逻辑动机。
+
+{\heiti \subsection{噪声干扰的形式化分析}}
+
+考虑领域短文本集合$\mathcal{S}$，每条文本$s \in \mathcal{S}$可按语义功能分解为两个互斥部分：
+\begin{equation}
+s = s_{\text{noise}} \oplus s_{\text{core}}
+\label{eq:decomp}
+\end{equation}
+其中$s_{\text{noise}}$包含专名、时空信息、模板表达等非类别语义成分；$s_{\text{core}}$承担类别判别所需的全部语义信息。在核电质量偏差场景中，$s_{\text{core}}$通常仅占总字数的10\%--30\%。设通用嵌入模型为$\phi: \mathcal{S} \to \R^d$，输出$\ell_2$归一化向量。
+
+\textbf{注意力偏置：Token稀缺性与权重膨胀.} 设$s$经分词后得到token序列$[t_1,\ldots,t_n]$，多层自注意力逐层计算每个token对[CLS]表示的贡献。对于预训练语料中低频出现的token $t$（如工程编号``BSB2818VB''经BPE切分产生的子词），其嵌入向量在训练分布中缺乏充分的共现约束，导致模型将这类``罕见''token视为高信息量信号并赋予不成比例的注意力权重。设$\alpha_i^{(L)}$为第$L$层（末层）中[CLS] token对$t_i$的注意力权重（跨所有注意力头平均），则有经验规律：
+\begin{equation}
+\sum_{i: t_i \in s_{\text{noise}}} \alpha_i^{(L)} \;\gg\; \frac{|s_{\text{noise}}|}{|s_{\text{noise}}| + |s_{\text{core}}|}
+\label{eq:attn_bias}
+\end{equation}
+即噪声token获得的注意力份额\emph{显著超过}其在文本中的token占比。该偏差在多层Transformer中逐层累积——每层的残差连接和前馈网络进一步放大了被注意力选中的噪声信号，而核心语义信号被逐步压缩至与噪声方向非线性纠缠的低维子空间中。
+
+\textbf{非线性混合的不可分解性.} 上述注意力偏置的直接推论是：$\phi(s)$的方向主要由$s_{\text{noise}}$中的低频token主导。一个自然的假设是嵌入向量可分解为噪声与核心语义的线性组合$\phi(s) \approx \alpha\,\phi(s_{\text{noise}}) + \beta\,\phi(s_{\text{core}})$，然而自注意力中的softmax非线性与前馈网络的非线性激活使得该假设不成立——$\phi(s)$是$s_{\text{noise}}$与$s_{\text{core}}$经多层非线性变换后的纠缠输出。形式化地：
+\begin{equation}
+\begin{aligned}
+\phi(s_{\text{noise}} \oplus s_{\text{core}}) &\neq \alpha\, \phi(s_{\text{noise}}) + \beta\, \phi(s_{\text{core}}) \\
+& \mathrlap{\forall \alpha,\beta \in \R}
+\end{aligned}
+\label{eq:nonlinear}
+\end{equation}
+
+\textbf{推论（后处理不可行性）.} 式(\ref{eq:nonlinear})意味着，任何仅作用于嵌入空间$\R^d$的变换$T: \R^d \to \R^d$（降维、中心化、白化等）均无法系统性地消除噪声影响，因为噪声信息已不可逆地与核心语义纠缠于嵌入的各个维度中。聚类算法本质上亦是在该嵌入空间上操作——其相似度度量、初始化策略与合并准则均以该空间的几何结构为前提——因此任何仅作用于聚类算法的改进同样无法补偿这一缺陷。这一推论将问题的解决路径严格限定在\textbf{编码前}——必须在文本进入编码器之前剥离噪声成分，由此确立了聚类框架\emph{输入层净化}设计的问题逻辑基础。
+
+{\heiti \subsection{距离扭曲的双重效应与不可补偿性}}
+
+式(\ref{eq:nonlinear})的非线性混合对嵌入空间的距离结构造成了两种方向相反但后果叠加的破坏，分别对应于聚类质量的两个核心维度——类内紧致性与类间分离性。
+
+\textbf{效应1：类内距离膨胀（Intra-class Distance Inflation）.} 设$s_1, s_2$属于同一缺陷类别（如均为``加固不牢靠''），其$s_{\text{core}}$语义等价，但$s_{\text{noise}}$因工程部位不同而相异。由注意力偏置分析，$\phi(s_1)$与$\phi(s_2)$的主导方向分别由各自不同的噪声成分决定。在$\ell_2$归一化空间中：
+\begin{equation}
+\langle \phi(s_1), \phi(s_2) \rangle \;\approx\; \langle \phi(s_{\text{noise}}^{(1)}), \phi(s_{\text{noise}}^{(2)}) \rangle \;\ll\; 1
+\label{eq:intra}
+\end{equation}
+同类样本在嵌入空间中的点积远小于1——等价于欧氏距离趋近理论最大值$\sqrt{2}$。类内样本被系统性推远，紧致性丧失，聚类算法无法在此基础上形成紧凑的簇。
+
+\textbf{效应2：类间边界模糊（Inter-class Boundary Blurring）.} 设$s_3, s_4$分属不同缺陷类别，但共享同一高频专名（如工程编号``BSB2818VB''同时出现在``加固不牢靠''与``材料未送检''记录中）。由于二者嵌入均被该专名的高注意力权重主导：
+\begin{equation}
+\langle \phi(s_3), \phi(s_4) \rangle \;\approx\; \|\phi(s_{\text{shared\_noise}})\|_2^2 \;\approx\; 1
+\label{eq:inter}
+\end{equation}
+不同类样本在嵌入空间中几乎不可区分。注意这一效应与效应1的破坏方向相反：类内样本被迫远离，类间样本被迫靠近——两个维度的破坏同时发生，使聚类算法面对的输入空间陷入\emph{最劣配置}。
+
+\textbf{不可补偿性原理.} 效应1与效应2的同时存在构成了聚类算法的根本性困境：聚类算法无法在类内距离被夸大且类间边界被模糊的嵌入空间上恢复真实的语义划分。形式化地，设有真实表示$\phi_{\text{true}}$（仅编码$s_{\text{core}}$，无噪声污染）与被噪声污染的表示$\phi_{\text{noisy}}$，$\mathcal{A}$为任一聚类算法，$P(\cdot,\cdot)$为聚类性能度量。若$\phi_{\text{noisy}}$满足式(\ref{eq:intra})与式(\ref{eq:inter})，则存在性能鸿沟：
+\begin{equation}
+\sup_{\mathcal{A}} P(\mathcal{A}, \phi_{\text{noisy}}) \;\ll\; P(\mathcal{A}^*, \phi_{\text{true}})
+\label{eq:ceiling}
+\end{equation}
+其中$\mathcal{A}^*$为在$\phi_{\text{true}}$上的理想聚类配置。不等式(\ref{eq:ceiling})紧凑地表达了本文的核心论点：\textbf{聚类输入空间的质量设定了所有聚类算法性能的上界。距离结构是天花板，聚类算法只是在逼近这个天花板。}这意味着，在噪声扭曲的距离结构上优化聚类算法，其收益是受限的；提升聚类性能的根本途径是重构输入空间本身。
+
+至此，理论分析链条的结论清晰：噪声在嵌入空间的非线性混合不可逆（\S 3.1），其对距离结构的双重破坏对任何聚类算法不可补偿（\S 3.2），因而解决路径必须从\emph{下游聚类算法}前移至\emph{编码器输入端}——在噪声进入编码器之前完成剥离。这一逻辑链直接导向了 SPEAR 的框架设计：\textbf{输入层语义净化 + 表示增强 + 层次聚类}。语义净化从根源上消除噪声竞争（``做减法''），表示增强从语义知识库中检索类别语义锚点以补偿信息损失（``做加法''），层次聚类在重构后的输入空间上完成簇划分——三个阶段分别对应\emph{消除偏置}、\emph{恢复信息}与\emph{簇划分}，共同构成完整的聚类框架闭环。
+
+% ===================================================================
+\section{\heiti SPEAR方法}
+\label{sec:method}
+
+基于\S 3的分析，本文设计了一种面向领域短文本的表示增强聚类框架 SPEAR，遵循\textbf{语义净化—表示增强—下游聚类}的三阶段流水线：净化阶段将操作前置到编码器输入端，在文本进入嵌入模型之前即剥离噪声成分，从根源上消除噪声对距离结构的破坏；增强阶段以表示增强机制补偿净化损失，重构高质量的表示空间；聚类阶段以增强表示驱动凝聚层次聚类完成簇划分。三个阶段依次衔接、协同作用，完整流程如图\ref{fig:flow}所示。
+
+流程的分工如下：(1)~\textbf{语义净化}在输入层利用大语言模型从字符序列中剥离无关噪声成分，解除噪声在自注意力中的竞争；(2)~\textbf{表示增强}从语义知识库中检索浓缩文本嵌入，通过加权融合构造增强表示，结构化补偿净化后遗留的距离结构偏差；(3)~\textbf{下游聚类}在增强表示上执行凝聚层次聚类，完成簇划分。\S 3的分析为阶段(1)提供了策略动机，阶段(2)的表示增强融合则通过外部语义知识库为信息损失提供补偿路径，阶段(3)将重构后的输入空间转化为最终的簇划分结果。需要指出的是，SPEAR 将嵌入模型视为可插拔的表示组件，框架本身不绑定特定嵌入模型，\S 5.3 将系统考察该组件的选择对框架聚类性能的影响。
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\linewidth}{!}{\input{fig_spear_framework_v2.tikz}}
+  \caption{SPEAR聚类框架流程图}
+  \label{fig:flow}
+\end{figure}
+% ===== 修复4.1标题上下异常大间距 =====
+% 根因：fig2 的 [H] 使左栏在 4.1 两段正文后被迫换栏，本栏欠满 ~151pt；
+% 而本栏仅有的可伸缩 glue（\intextsep 与 \subsection 前后距）被按
+% glue set 51.46 拉伸，使 4.1 标题上方出现 ~115pt、下方 ~53pt 空白。
+% 修复：fig2 改为 [htbp] 浮动（仍落在右栏顶部），本栏由后续正文填满、
+% 不再欠满，标题 glue 不再被拉伸；再用三个 \vspace 抵消图1的 \intextsep、
+% \subsection 前距与后距，使 4.1 标题上下间距回到个位数 pt（实测 5.9/6.2pt）。
+\vspace{-\intextsep}
+\vspace{-2.0ex}
+{\heiti \subsection{语义净化}}
+\vspace{-1.7ex}
+
+\S 3.1的分析表明，噪声与核心语义在嵌入空间中的非线性混合不可逆——一旦噪声进入编码器，任何后处理均无法恢复纯净表示，聚类算法也无法在扭曲的距离结构上补偿这一缺陷。然而，这一困境隐含一个易被忽视的前提：噪声必须\emph{进入编码器}才能产生注意力竞争。若能在文本进入编码器之前就从字符序列中移除噪声成分，则自注意力机制的全部容量自然分配给核心语义，非线性混合从根源上被消除，聚类所依赖的距离结构得以在源头得到保护。
+
+为此，SPEAR 采用大语言模型（LLM）驱动的语义净化策略：将原始偏差记录作为输入，通过精心设计的提示指令引导 LLM 识别并剥离与问题类别无关的语义成分，输出仅保留核心偏差描述的浓缩文本。图\ref{fig:purification}以语义解构的视角示意了 LLM 内部完成这一任务时的认知流程——成分解构、无关原型匹配、成分过滤与移除——尽管在实际实现中，LLM 以端到端的方式一次性完成整个净化过程。
+
+\begin{figure}[htbp]
+  \centering
+  \resizebox{\linewidth}{!}{\input{fig_purification_pipeline_v2.tikz}}
+  \caption{LLM语义净化流程}
+  \label{fig:purification}
+\end{figure}
+
+\textbf{LLM净化提示设计.} 本文为语义净化任务设计了结构化提示模板，引导 LLM 执行以下认知操作：(1)~\textbf{语义单元切分}：将巡检文本解析为实体、时间描述、过程短语、核心缺陷描述等语义单元；(2)~\textbf{无关成分识别}：依据四类典型噪声范畴（详见下文）判断每个语义单元与类别判别的关联性；(3)~\textbf{浓缩文本生成}：仅保留与缺陷类别直接相关的核心语义单元，重组为简洁的浓缩文本。
+
+\textbf{四类无关语义范畴.} 依据领域特征归纳出四类典型无关语义成分，作为 LLM 净化的判别依据：
+\begin{enumerate}[leftmargin=1.5em,itemsep=1pt]
+  \item \textbf{时空信息：}包括具体日期、厂房编号、区域名称、方位描述等。时空信息通常正交于问题类别：同一厂房内可能发生不同类别的问题，而同一类别的问题亦可能分布于不同时空。
+  \item \textbf{专有实体：}包括公司名称、人员姓名、工程/设备编号等。专名体系在领域内呈开集特征，不同专名之间语义关联极弱。
+  \item \textbf{过程性描述：}如``巡检时发现''``对记录单核查时发现''。这类表达以固定模板形式反复出现，在词共现统计中占据显著位置，进而主导嵌入方向。
+  \item \textbf{冗余修饰：}包括程度副词、范畴限定语等，累积效应不可忽略。
+\end{enumerate}
+前两类对聚类所依赖的表示质量的干扰最为显著，是语义净化的主要目标。需要指出的是，上述四类噪声范畴描述的是专名密集文本的通用噪声模式，并不依赖核电领域的特定假设；对任意领域，只需替换对应的专名体系与模板词表即可迁移。
+
+{\heiti \subsection{表示增强聚类}}
+
+经语义净化得到的浓缩文本已解除了噪声的注意力竞争，核心语义得以不受干扰地进入编码器。然而，直接以浓缩文本替代原始文本进行表示面临两个挑战：(a)~净化过程存在信息损失——某些边缘案例中专名与核心语义高度耦合（如``BSB2818VB墙插筋''中工程编号与部位名称不可拆分），移除噪声时可能一并损失部分类别信息；(b)~浓缩文本因篇幅缩短至仅剩核心短语，嵌入向量在高维空间中的近邻结构不够稳定，少数维度上的随机波动可能显著改变点积结果。
+
+上述两个挑战指向一个根本性权衡：语义净化消除了噪声对嵌入方向的主导性偏置，但也损失了部分对类别判别有益的细粒度语义信息。为此，SPEAR 引入表示增强策略，通过表示增强融合实现：以语义知识库中检索到的浓缩文本嵌入提供类别语义锚点，以原始嵌入补充实例级上下文信息，通过加权融合在纯净性与丰富性之间建立结构化平衡。融合公式如下：
+\begin{equation}
+\mathbf{e}_{\text{final}} = \beta \cdot \mathbf{e}_{\text{raw}} + (1-\beta) \cdot \mathbf{e}_{\text{ref}}
+\label{eq:fusion}
+\end{equation}
+其中$\mathbf{e}_{\text{raw}}$为原始文本嵌入，$\mathbf{e}_{\text{ref}}$为从语义知识库检索到的浓缩文本聚合嵌入。该加权融合可等价地重写为$\mathbf{e}_{\text{final}} = \mathbf{e}_{\text{ref}} + \beta(\mathbf{e}_{\text{raw}} - \mathbf{e}_{\text{ref}})$：$\mathbf{e}_{\text{ref}}$提供类别语义锚点，$(\mathbf{e}_{\text{raw}} - \mathbf{e}_{\text{ref}})$捕捉每条文本独有的、净化后幸存的实例级语义差异，$\beta$控制该差异项的引入幅度。
+
+\subsubsection{语义知识库构建}
+
+设原始数据集为$D = \{d_1,\ldots,d_N\}$，经语义净化后得到对应浓缩文本集合$C = \{c_1,\ldots,c_N\}$。对每条浓缩文本$c_i$，调用嵌入模型$\phi(\cdot)$编码为$\phi(c_i) \in \R^{d}$，写入向量数据库形成知识库$K = \{\phi(c_i)\}_{i=1}^N$。
+
+在构建过程中，因清洗后的浓缩文本存在大量语义等价的情况（如所有``放置不规范''的样本浓缩后相同），本文采用去重策略：对浓缩文本集合做余弦相似度聚类，将相似度高于阈值$\tau$的文本归并，仅保留簇中心文本入库。
+
+\subsubsection{加权融合}
+
+在线检索阶段，给定查询文本$q$，计算$\phi(q)$，在知识库$K$中检索最相似的$k$个浓缩文本向量，其聚合表示为：
+\begin{equation}
+\mathbf{e}_{\text{ref}} = \sum_{j=1}^{k} w_j \cdot \phi(c_{i_j}), \qquad w_j = \frac{1}{k}
+\label{eq:ref}
+\end{equation}
+将式(\ref{eq:ref})代入式(\ref{eq:fusion})得到最终增强表示。$\beta \in [0,1]$为融合权重：$\beta = 1$退化为不使用知识库的基线；$\beta = 0$完全依赖浓缩语义。该加权融合可自然地解释为：$\mathbf{e}_{\text{ref}}$作为类别语义锚点提供稳定的聚类中心指示，$(\mathbf{e}_{\text{raw}} - \mathbf{e}_{\text{ref}})$捕捉每条文本的实例级语义偏移——净化后幸存的、与具体实例绑定的细粒度信息。$\beta$控制该偏移项的引入幅度：$\beta$越大，越信任原始嵌入中的补充信息；$\beta$越小，越依赖浓缩语义的稳定性。当$\beta \to 0$时，增强表示退化为浓缩语义基线，确保至少不会比纯净化方案更差。
+
+{\heiti \subsection{下游聚类}}
+
+在增强表示$\mathbf{e}_{\text{final}}$上，SPEAR 采用凝聚层次聚类作为簇划分组件。凝聚层次聚类通过自底向上的策略逐步合并最相似的样本或子簇，无需预设聚类数量，适合类别分布未知的工业场景。合并准则采用 Ward 方差最小化方法：每一步合并使簇内方差增量最小的两个簇，在欧氏距离空间中等价于最小化合并后的类内离差平方和。该选择同时基于表示机制与聚类范型的相容性实证：如\S 5.4 所示，表示增强对层次/质心类聚类算法有稳定的正向增益，而对密度类算法有害——这一表示机制与聚类范型的相容关系，正是 SPEAR 选择凝聚层次聚类作为簇划分组件的依据；且凝聚层次聚类在获得增益的同时保持全样本覆盖与可控的簇粒度，满足工业部署对``全样本覆盖''与``簇粒度可控''的双重要求。
+
+{\heiti \subsection{超参数选择}}
+
+SPEAR 涉及多个关键超参数——融合权重$\beta$、检索数量$k$、知识库去重阈值$\tau$以及聚类截断高度$\Phi_{\text{clustering}}$——其最优配置依赖于数据分布与净化质量。领域短文本场景通常缺乏大规模标注，直接以聚类指标为优化目标面临评估困境：完全无标注时无法计算有监督聚类指标。为此，本文采用一种以少量标注引导的超参数选择方案：先以轻量的标注流程获得少量带标签样本，再以 Tree-Structured Parzen Estimator（TPE）\cite{bergstra2011}在该标签子集上自动搜索最优超参数配置。需要说明的是，标注仅用于\textbf{超参数选择}这一环节，而表示学习与聚类过程本身不依赖标签——这与完全监督的聚类方法有本质区别。图\ref{fig:tpe_flow}给出了该方案的完整流程。
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\linewidth}{!}{\input{fig_tpe_optimization_v3.tikz}}
+  \caption{以少量标注引导的超参数选择流程}
+  \label{fig:tpe_flow}
+\end{figure}
+
+\subsubsection{轻量标注协议}
+
+为获得用于超参数选择的标签子集，本文采用一种迭代验证式的轻量标注协议，其目标是让领域专家以最低成本确认一批样本的类别归属。具体地：首先在浓缩文本上执行凝聚层次聚类，由领域专家（或具备领域知识的大语言模型）审核聚类结果的一致性，并通过调整截断高度驱动迭代优化；待聚类划分收敛后，由用户对划分结果进行二元确认（合并错误簇/拆分错误簇），确认结果即构成标签子集$D_{\text{labeled}}$。
+
+上述过程只需领域专家对\textbf{簇级}划分进行判定，而非逐条标注，因此标注成本显著低于全量人工标注。该协议具有通用性：它不依赖核电领域的具体类别体系，只需替换审核者对``聚类规则''的定义即可迁移至其他领域。
+
+\subsubsection{Tree-Structured Parzen Estimator}
+
+设待优化超参数集合为$\Theta = \{\beta, k, \tau, \Phi_{\text{clustering}}\}$。定义如下搜索空间（实验中的具体实现与边界见\S 5.2）：
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+  \item 融合权重 $\beta \in [0, 1]$
+  \item 检索数量 $k \in \{1, 2, 3, 4, 5, 6, 7\}$
+  \item 聚类算法超参数（凝聚层次聚类截断高度 $\Phi_{\text{clustering}} \in [0.1, 4]$）
+\end{itemize}
+
+本文采用 Tree-Structured Parzen Estimator（TPE）作为超参数优化方法。TPE 将历史评估结果按性能分位划分为两个密度——好配置密度$l(x)$与一般配置密度$g(x)$，采集函数为期望提升（EI）：
+\begin{equation}
+\mathrm{EI}_{y^*}(x) \propto \frac{l(x)}{g(x)}
+\label{eq:tpe}
+\end{equation}
+当$x$落在好配置聚集的区域时，$l(x)/g(x)$高，EI高；当$x$落在已充分探索的区域时，$g(x)$高，EI低。这一机制天然平衡了利用与探索。
+
+\subsubsection{复合评估函数}
+
+为全面度量聚类质量，本文设计了一个复合评估函数，对多个维度的指标进行加权融合：
+\begin{equation}
+\begin{aligned}
+f(x) = &\; 0.4 \cdot \mathrm{ARI} + 0.3 \cdot \mathrm{NMI} + 0.1 \cdot \mathrm{VM} \\
+       &\; + 0.1 \cdot \mathrm{CCA} + 0.1 \cdot \mathrm{(1-\text{noise})}
+\end{aligned}
+\label{eq:composite}
+\end{equation}
+其中 ARI 为调整兰德系数，NMI 为归一化互信息，VM 为 V-Measure，CCA 为聚类数准确率（用于防止优化过程在错误的类别数量上过度拟合样本级指标），noise 为被判定为噪声的样本占比。CCA 定义为：
+\begin{equation}
+\mathrm{CCA} = 1 - \frac{|k_{\text{pred}} - k_{\text{true}}|}{\max(k_{\text{pred}}, k_{\text{true}})}
+\label{eq:cca}
+\end{equation}
+
+% ===================================================================
+\section{\heiti 实验与分析}
+\label{sec:experiments}
+
+本节从``框架组件选择''的视角设计两组相互补充的实验，刻画 SPEAR 聚类框架的关键设计决策。实验一（\S 5.3）固定簇划分组件（凝聚层次聚类），横向比较 12 种主流嵌入模型作为表示组件的聚类性能，回答``框架应选择何种表示组件''；实验二（\S 5.4）固定表示组件，考察表示增强模块对 9 种聚类算法的差异化影响，回答``框架应搭配何种簇划分组件''。
+
+{\heiti \subsection{实验设置}}
+
+\textbf{数据集。}实验在核电质量偏差短文本数据集上进行。训练集含约 3,100 条偏差记录（93 类），用于超参数搜索与模型适配；外部测试集含约 20,200 条偏差记录（353 类），作为独立评估。测试集由领域专家标注生成（见\S 4.4.1 的轻量标注协议）。每条文本平均长度约 28 个字符。
+
+\textbf{评估指标。}采用调整兰德系数（ARI）、归一化互信息（NMI）、V-Measure（VM）、Fowlkes-Mallows 指数（FMS）、调整互信息（AMI）、同质性（HS）与完整性（CS）等指标评估聚类质量。其中 ARI 对随机划分的期望值归零，且不随类别数变化而膨胀，作为首要指标。此外，记录预测聚类数（相对真实类别数 353）与噪声率作为辅助诊断指标：聚类数刻画聚类框架在类别粒度上的行为，噪声率反映簇划分算法丢弃样本的程度，二者须与 ARI 等质量指标联合解读。
+
+\textbf{嵌入模型。}比较的 12 种嵌入模型涵盖三类来源：中文领域预训练模型（bge-large-zh-v1.5\cite{xiao2023}（1024 维）、bge-base-zh-v1.5\cite{xiao2023}（768 维）、Stella v3（1792 维））、多语言/英文预训练模型（Qwen3-Embedding-0.6B/4B（1024/2560 维）、E5 multilingual\cite{wang2022}（1024 维）、gte-large/base\cite{li2023}（1024/768 维）、mT5-large/base\cite{xue2021}（1024/768 维）），以及对比学习微调模型（SimCSE v3（768 维）、SCCL MPNet\cite{zhang2021}（768 维））。
+
+\textbf{表示增强设置。}沿用\S 4.2 的表示增强机制，区分两种框架配置：\textbf{nr0}（基线配置，直接对原始文本嵌入执行聚类，不经过语义净化与表示增强）与\textbf{nr-1}（完整框架，语义净化后以浓缩文本语义知识库的检索结果加权融合原始嵌入，再执行聚类）。两者共享同一嵌入模型与同一超参数搜索流程，以保证公平对比。两种配置及两组组件选择实验（表示组件选择、簇划分组件选择）的设计如图\ref{fig:exp_design}所示。
+
+\begin{figure}[htbp]
+\centering
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}[yscale=-1]
+\node [style=box-flow] (n0) at (200, 18) {原始文本};
+\node [style=cont-top] (n1) at (200, 84) {};
+\node [style=cont-label] (n2) at (200, 65) {框架配置};
+\node [style=box-base] (n3) at (110, 89) {基线配置\\跳过语义净化与表示增强};
+\node [style=box-full] (n4) at (290, 89) {完整框架\\经过语义净化与表示增强};
+\node [style=cont-rep] (n5) at (200, 169) {};
+\node [style=cont-label-rep] (n6) at (200, 149) {表示层};
+\node [style=box-rep-fixed] (n7) at (110, 174) {bge-large-zh-v1.5};
+\node [style=box-exp] (n8) at (290, 174) {表示层实验};
+\node [style=cont-clu] (n9) at (200, 255) {};
+\node [style=cont-label-clu] (n10) at (200, 235) {聚类层};
+\node [style=box-exp] (n11) at (110, 260) {聚类层实验};
+\node [style=box-clu-fixed] (n12) at (290, 260) {凝聚层次聚类};
+\node [style=cont-data] (n13) at (200, 343) {};
+\node [style=cont-label] (n14) at (200, 321) {数据集与评估};
+\node [style=box-data] (n15) at (110, 348) {训练集\\3,100 条 / 93 类\\TPE 超参数搜索};
+\node [style=box-data] (n16) at (290, 348) {测试集\\20,200 条 / 353 类\\独立评估};
+\draw [style=edge-flow] (n0) to (n1);
+\draw [style=edge-flow] (n1) to (n5);
+\draw [style=edge-flow] (n9) to (n13);
+\draw [style=edge-cross-rep] (n7) to (n11);
+\draw [style=edge-cross-clu] (n8) to (n12);
+\end{tikzpicture}}
+\caption{实验设计：nr0 基线配置与 nr-1 完整框架的交叉固定对比}
+\label{fig:exp_design}
+\end{figure}
+
+\textbf{超参数搜索。}所有方法均通过 TPE 在标签子集上进行超参数搜索，统一搜索预算设为约 200 次评估，优化目标为式(\ref{eq:composite})的复合评估函数。
+
+{\heiti \subsection{Optuna 超参数搜索空间}}
+
+本文的超参数搜索基于 Optuna 框架实现，采用 Tree-Structured Parzen Estimator（TPE）采样器（多元 TPE，启动试验数 $n_{\text{startup}}=15$，随机种子固定为 42），以式(\ref{eq:composite})的复合评估函数为目标函数，在标签子集上进行 200 次评估，并行度为 8。对两种框架配置，搜索空间设计如下：
+
+\begin{itemize}[leftmargin=1.5em,itemsep=1pt]
+  \item \textbf{聚类截断高度} $\Phi_{\text{clustering}}$：在 $[0.1, 4]$ 区间内连续采样（对数均匀先验由 TPE 自适应建模），控制凝聚层次聚类在 Ward 距离上的截断高度，直接决定簇粒度。
+  \item \textbf{融合权重} $\beta$：在 $[0, 1]$ 区间内连续采样（nr-1 配置；nr0 配置固定为 $\beta=1$，即不使用知识库），控制原始嵌入与检索浓缩嵌入的加权比例，见式(\ref{eq:fusion})。
+  \item \textbf{检索数量} $k$：在 $\{1, 2, \ldots, 7\}$ 内离散采样（nr-1 配置；nr0 配置固定为 $k=0$，即跳过检索），控制语义知识库检索的近邻数量。
+  \item \textbf{PCA 降维维度}：从 $\{16, 32, 64, 128, 256, 512, 768\}$ 中类别采样（本实验固定为 0，即不降维；该维度用于探索低维聚类场景）。
+\end{itemize}
+
+上述搜索空间覆盖了 SPEAR 框架的全部关键超参数：截断高度决定簇划分的粒度，融合权重与检索数量共同决定表示增强的强度，三者通过 TPE 的多元建模联合优化，避免了网格扫描在连续—离散混合空间中的组合爆炸。200 次评估的预算约为网格全扫描（$39 \times 11 \times 7 \approx 3003$ 个组合）的 1/15，在保证搜索质量的同时将计算成本控制在可接受范围。
+
+上述边界的选取并非任意。聚类截断高度的区间 $[0.1, 4]$ 覆盖了 bge-large-zh-v1.5 嵌入在测试集上的实际距离尺度：\S 5.6 的距离分析表明，原始嵌入空间正负样本的平均欧氏距离介于 0.43--0.79，浓缩语义增强后类内距离进一步缩短，因此上界 4 足以容纳从粗到细的各种簇划分粒度，下界 0.1 则避免截断高度过小导致的过碎划分。融合权重区间 $[0, 1]$ 与式(\ref{eq:fusion})的约定一致，两端点分别对应``纯原始嵌入''（$\beta=1$，不使用知识库）与``纯浓缩语义''（$\beta=0$）两个极端配置，中间值则覆盖全部加权组合，使搜索能够定位两者之间的最优折中。检索数量上限 $k=7$ 与\S 5.5 热图扫描的 $k \in \{1,\ldots,7\}$ 保持一致，该上限基于检索质量的实证观察：当 $k$ 超过 7 时，近邻中混入异类样本的概率显著上升，检索增益趋于饱和。PCA 降维维度集合 $\{16, 32, 64, 128, 256, 512, 768\}$ 覆盖了从低维到近满秩的典型投影尺度，用于探索低维聚类场景下的降维—聚类联合优化；本实验将其固定为 0（不降维），以保留嵌入的完整几何信息，使组件比较实验聚焦于表示与聚类本身。
+
+该搜索空间是\S 4.4 超参数选择方案在实验环节的具体实现，二者构成``方法定义—实验落地''的对应关系：\S 4.4.1 的轻量标注协议以``簇级确认''方式构建标签子集$D_{\text{labeled}}$，本节的搜索即在该标签子集上执行——标注只需对簇级划分做二元确认，仅用少量簇级标注即可引导搜索，无需逐条标注全部样本；\S 4.4.3 的复合评估函数（式(\ref{eq:composite})）为搜索提供了兼顾划分正确性（ARI/NMI/VM）与类别粒度（CCA、噪声率）的优化目标，防止优化过程在错误的类别数量上过度拟合样本级指标。与\S 4.4.2 定义的理论搜索空间$\Theta = \{\beta, k, \tau, \Phi_{\text{clustering}}\}$相比，本节补充了 PCA 降维维度这一实现级维度并给出各维度的具体边界；知识库去重阈值$\tau$在实验设定中固定（见\S 4.2.1 语义知识库构建的去重策略），故未纳入本节搜索范围。
+
+{\heiti \subsection{表示组件选择对聚类性能的影响}}
+
+我们首先固定簇划分组件（凝聚层次聚类），横向比较 12 种嵌入模型作为 SPEAR 表示组件时的聚类性能。表\ref{tab:rep_quality}给出基线配置（nr0）与完整框架（nr-1）下 7 项聚类指标的完整表现。表中聚类数行为预测簇数（真实类别数为 353），用于刻画各表示组件在类别粒度上的行为差异。
+
+% 通栏大表：table* 双栏浮动（标准 LaTeX 机制）
+\begin{table*}[htbp]
+\centering
+\footnotesize
+\caption{\heiti 12 种文本嵌入模型作为表示组件时的聚类性能对比}
+\label{tab:rep_quality}
+\vspace{1.5mm}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{lcccccccccccc}
+\toprule
+指标 & bge-large & bge-base & Stella v3 & Qwen3-0.6B & Qwen3-4B & E5 & gte-large & gte-base & mT5-large & mT5-base & SimCSE & SCCL \\
+\midrule
+\multicolumn{13}{l}{\emph{nr0：基线配置}} \\
+ARI & 0.154 & 0.159 & 0.148 & 0.133 & 0.110 & 0.089 & 0.031 & 0.032 & 0.036 & 0.035 & 0.106 & 0.028 \\
+NMI & 0.589 & 0.578 & 0.563 & 0.593 & 0.563 & 0.553 & 0.438 & 0.439 & 0.494 & 0.456 & 0.545 & 0.405 \\
+VM & 0.589 & 0.578 & 0.563 & 0.593 & 0.563 & 0.553 & 0.438 & 0.439 & 0.494 & 0.456 & 0.545 & 0.405 \\
+FMS & 0.159 & 0.165 & 0.156 & 0.142 & 0.118 & 0.097 & 0.036 & 0.037 & 0.044 & 0.041 & 0.112 & 0.036 \\
+AMI & 0.450 & 0.458 & 0.451 & 0.419 & 0.379 & 0.352 & 0.175 & 0.183 & 0.201 & 0.193 & 0.366 & 0.187 \\
+HS & 0.584 & 0.557 & 0.534 & 0.609 & 0.578 & 0.573 & 0.456 & 0.455 & 0.533 & 0.478 & 0.554 & 0.399 \\
+CS & 0.595 & 0.600 & 0.594 & 0.577 & 0.549 & 0.534 & 0.421 & 0.424 & 0.460 & 0.436 & 0.537 & 0.411 \\
+聚类数 & 270 & 203 & 169 & 394 & 389 & 438 & 487 & 463 & 737 & 512 & 346 & 466 \\
+\midrule
+\multicolumn{13}{l}{\emph{nr-1：完整框架}} \\
+ARI & 0.283 & 0.268 & 0.231 & 0.188 & 0.150 & 0.096 & 0.038 & 0.038 & 0.037 & 0.034 & 0.116 & 0.030 \\
+NMI & 0.687 & 0.665 & 0.629 & 0.574 & 0.534 & 0.568 & 0.438 & 0.448 & 0.453 & 0.449 & 0.559 & 0.407 \\
+VM & 0.687 & 0.665 & 0.629 & 0.574 & 0.534 & 0.568 & 0.438 & 0.448 & 0.453 & 0.449 & 0.559 & 0.407 \\
+FMS & 0.288 & 0.280 & 0.247 & 0.216 & 0.179 & 0.106 & 0.044 & 0.044 & 0.043 & 0.040 & 0.122 & 0.037 \\
+AMI & 0.597 & 0.587 & 0.551 & 0.507 & 0.465 & 0.370 & 0.191 & 0.194 & 0.203 & 0.192 & 0.387 & 0.188 \\
+HS & 0.663 & 0.624 & 0.582 & 0.510 & 0.471 & 0.590 & 0.452 & 0.465 & 0.470 & 0.468 & 0.566 & 0.403 \\
+CS & 0.712 & 0.712 & 0.685 & 0.654 & 0.616 & 0.547 & 0.425 & 0.431 & 0.437 & 0.432 & 0.552 & 0.412 \\
+聚类数 & 208 & 151 & 127 & 83 & 78 & 451 & 443 & 468 & 465 & 475 & 342 & 459 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}
+
+表\ref{tab:rep_quality}揭示了两个对聚类框架表示组件设计具有指导意义的结论：
+
+\textbf{结论一：中文领域预训练嵌入是框架表示组件的首选。} bge 系列模型在测试集上的 ARI（nr0 下 0.154--0.159，nr-1 下 0.268--0.283）显著高于所有通用多语言/英文预训练模型。E5 multilingual、gte 系列与 mT5 系列的测试 ARI 均低于 0.1，几乎不具备有效的类别判别能力，作为表示组件时框架的聚类性能近乎失效。值得注意的是，768 维的 bge-base（nr-1 下 0.268）远超 1792 维的 Stella v3（0.231），说明\textbf{预训练语料与目标领域的一致性}远比维度大小重要——bge 面向中文的大规模微调使其在中文领域短文本上占据明显优势，而通用英文/多语言模型的表示在该场景下近乎失效。值得强调的是，各模型在熵类指标上的差距远小于 ARI 上的差距：E5 multilingual 的 nr0 NMI（0.553）与 bge-large（0.589）仅相差 0.036，但其 ARI（0.089）不足 bge-large（0.154）的六成；SCCL 的 NMI（0.405）亦可达 bge-large 的约七成，而 ARI（0.028）仅为后者的约五分之一。这说明 NMI、HS 等指标对``簇划分正确性''的刻画不够敏感，容易高估弱表示的表面一致性；ARI 对随机划分的期望值归零、对错误划分惩罚更严格，是衡量聚类性能更可靠的首要指标。
+
+\textbf{结论二：单纯放大模型规模无益于聚类性能。} 从 gte-large（1024 维）与 gte-base（768 维）的对比看，二者 nr0 ARI（0.031 vs 0.032）与 nr-1 ARI（0.038 vs 0.038）几乎相同；mT5-large 与 mT5-base 同样持平（0.036 vs 0.035；0.037 vs 0.034）；Qwen3-Embedding-4B（2560 维）的 nr-1 测试 ARI（0.150）反而低于 Qwen3-Embedding-0.6B（0.188）。这说明当预训练语料与目标领域不匹配时，增大维度或参数量并不能补偿表示组件的适配性缺陷。类别粒度上的观察进一步支持该结论：Qwen3-0.6B 与 Qwen3-4B 在 nr-1 下的预测聚类数分别骤降至 83 与 78（真实类别数 353），远低于 bge 系列的 151--208，表明缺乏领域对齐的``更强语义理解''在表示增强下反而加剧了类别粒度的过度合并。
+
+此外，表\ref{tab:rep_quality}中完整框架（nr-1）相较基线配置（nr0）在多数表示组件上带来了正向增益，且增益幅度与基础表示质量正相关：bge-large 的 ARI 从 0.154 提升至 0.283（$+84\%$），同质性 HS 从 0.584 提升至 0.663、完整性 CS 从 0.595 提升至 0.712，类内紧致与类间分离同时获得改善；而对基础表示近乎失效的 gte/mT5 系列，表示增强几乎无济于事（ARI 仍低于 0.04）。这一现象印证了\S 3.2 的核心论点——表示增强是一种补偿机制，其有效性以表示组件具备基本的类别判别能力为前提。从聚类数看，表示增强普遍将预测簇数向真实类别数 353 的方向修正：过分割最严重的 mT5-large 从 737 收敛至 465，gte-large 从 487 降至 443；但 SimCSE 的聚类数（346/342）虽最接近 353，其 ARI 却仅有 0.106/0.116——``簇数量接近''并不等于``簇划分正确''，聚类数应作为诊断类别粒度的辅助信号，而非替代质量指标。
+
+{\heiti \subsection{表示增强模块与聚类范型的相容性}}
+
+实验一固定了簇划分组件，本实验则固定表示组件为 bge-large-zh-v1.5，考察表示增强模块（nr-1）相对基线（nr0）对 9 种不同聚类范型的影响，结果如表\ref{tab:algo_effect}所示。除 7 项聚类指标外，表中同时给出预测聚类数与噪声率，用于联合诊断各类算法的行为模式。
+
+% 表2：不用 p（避免 LaTeX 将其单独排在浮动页上），! 允许其排在页首
+\begin{table*}[!htb]
+\centering
+\footnotesize
+\caption{\heiti 表示增强模块对不同聚类算法的影响}
+\label{tab:algo_effect}
+\vspace{1.5mm}
+\begin{adjustbox}{width=\textwidth}
+\begin{tabular}{lccccccccc}
+\toprule
+指标 & Birch & Agglo & AffinityProp & Canopy & Leader & ChnWhisp & DBSCAN & HDBSCAN & RADBSCAN \\
+\midrule
+\multicolumn{10}{l}{\emph{nr0：基线配置}} \\
+ARI & 0.139 & 0.155 & 0.134 & 0.042 & 0.139 & 0.001 & 0.202 & 0.191 & 0.329 \\
+NMI & 0.675 & 0.590 & 0.580 & 0.457 & 0.571 & 0.095 & 0.732 & 0.733 & 0.722 \\
+VM & 0.675 & 0.590 & 0.580 & 0.457 & 0.571 & 0.095 & 0.732 & 0.733 & 0.722 \\
+FMS & 0.146 & 0.160 & 0.141 & 0.061 & 0.173 & 0.074 & 0.270 & 0.237 & 0.425 \\
+AMI & 0.416 & 0.450 & 0.411 & 0.238 & 0.443 & 0.063 & 0.600 & 0.587 & 0.646 \\
+HS & 0.759 & 0.585 & 0.590 & 0.446 & 0.535 & 0.051 & 0.684 & 0.702 & 0.619 \\
+CS & 0.607 & 0.595 & 0.570 & 0.470 & 0.612 & 0.678 & 0.788 & 0.766 & 0.866 \\
+聚类数 & 4324 & 273 & 353 & 1249 & 1038 & 35 & 219 & 255 & 41 \\
+噪声率 & 0\% & 0\% & 0\% & 0\% & 0\% & 0\% & 80.3\% & 68.2\% & 90.2\% \\
+\midrule
+\multicolumn{10}{l}{\emph{nr-1：完整框架}} \\
+ARI & 0.329 & 0.281 & 0.229 & 0.152 & 0.221 & 0.060 & 0.110 & 0.046 & 0.042 \\
+NMI & 0.738 & 0.685 & 0.622 & 0.624 & 0.649 & 0.589 & 0.734 & 0.676 & 0.618 \\
+VM & 0.738 & 0.685 & 0.622 & 0.624 & 0.649 & 0.589 & 0.734 & 0.676 & 0.618 \\
+FMS & 0.340 & 0.285 & 0.246 & 0.175 & 0.261 & 0.121 & 0.233 & 0.143 & 0.166 \\
+AMI & 0.564 & 0.588 & 0.543 & 0.486 & 0.534 & 0.499 & 0.622 & 0.516 & 0.511 \\
+HS & 0.806 & 0.669 & 0.575 & 0.608 & 0.618 & 0.517 & 0.651 & 0.604 & 0.483 \\
+CS & 0.680 & 0.702 & 0.678 & 0.640 & 0.683 & 0.684 & 0.841 & 0.767 & 0.860 \\
+聚类数 & 2084 & 231 & 126 & 688 & 1142 & 215 & 338 & 645 & 210 \\
+噪声率 & 0\% & 0\% & 0\% & 0\% & 0\% & 0\% & 63.0\% & 36.3\% & 56.0\% \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table*}
+
+表\ref{tab:algo_effect}呈现了一个清晰且方向一致的模式：\textbf{表示增强模块对层次/质心类算法有利，对密度类算法有害。} 前六种层次/质心类算法（Birch、Agglomerative、AffinityPropagation、Canopy、Leader、ChineseWhispers）在表示增强下 ARI 全部提升（增益 $+0.059$ 至 $+0.190$）；而后三种密度类算法（DBSCAN、HDBSCAN、RADBSCAN）在表示增强下 ARI 全部下跌（$-0.092$ 至 $-0.287$），其中 RADBSCAN 从 nr0 下的 0.329（全场最高）骤降至 0.042，HDBSCAN 也下降超过 0.1。
+
+这一现象可以从两类算法的内在机制得到解释。层次/质心类算法依赖样本间距离结构的全局一致性，而表示增强通过类别语义锚点将同类样本拉近、异类样本拉开（对应\S 3.2 中类内紧致与类间分离的双重改进），恰好强化了这一全局距离结构。密度类算法则依赖局部密度的连通性假设——它们在 nr0 下能够利用噪声主导的高维结构形成局部稠密簇，而表示增强对距离结构的重排破坏了这种局部密度假设，导致其性能下降。
+
+多指标联合诊断进一步揭示了不同算法在表面高指标背后的不同代价。\textbf{其一，密度类算法的高指标以高噪声率为代价。} 在 nr0 下，DBSCAN、HDBSCAN、RADBSCAN 的 NMI 分别高达 0.732、0.733、0.722，甚至超过 Birch（0.675）与 Agglomerative（0.590），但三者将 $80.3\%$、$68.2\%$、$90.2\%$ 的样本判定为噪声——其 NMI 与完整性 CS（0.788、0.766、0.866）仅由保留的少数稠密样本驱动，存在严重的选择偏差；RADBSCAN 的 ARI（0.329）与 FMS（0.425）虽为全场最高，却是以丢弃 $90.2\%$ 的样本为代价换取的。表示增强虽将三者的噪声率分别降至 $63.0\%$、$36.3\%$、$56.0\%$，但代价是 ARI 的全面崩落（0.110、0.046、0.042），说明距离结构的重排使其局部密度假设不再成立。相比之下，层次/质心类算法在两种模式下噪声率均为零，所有样本均被有效分配。\textbf{其二，同类算法内部存在显著的簇粒度差异。} Birch 在 nr-1 下取得 ARI（0.329）与同质性 HS（0.806）的双料最高，但预测聚类数高达 2084——约为真实类别数的 6 倍，属于典型的细粒度过分割，在实际部署中 2084 个簇难以人工管理与标注；Agglomerative 的聚类数为 231，以略低的 ARI（0.281）换取了远为可控的簇粒度，是``质量—粒度''平衡更优的选择。AffinityPropagation 在 nr0 下恰好产生 353 个簇（等于真实类别数），但其 ARI（0.134）并不突出，进一步说明簇数匹配本身并不保证划分质量。\textbf{其三，ChineseWhispers 是表示增强的最大相对受益者。} 该算法在 nr0 下几乎完全失效（ARI 0.001、NMI 0.095），表示增强后 NMI 跃升至 0.589、ARI 提升至 0.060——表示增强显著修正了其随机传播机制对距离结构的要求，但其绝对水平仍为各算法中最低。
+
+上述分析进一步说明，SPEAR 选择凝聚层次聚类作为簇划分组件，既是表示机制相容性的结果（表示增强带来 $+0.126$ 的 ARI 增益且噪声率为零），也符合工业场景对``全样本覆盖''与``簇粒度可控''的双重部署要求。
+
+{\heiti \subsection{融合权重$\beta$与检索数量$k$的联合影响}}
+
+加权融合权重$\beta$与检索数量$k$是 SPEAR 方法的两个关键超参数。为理解其交互效应，我们系统扫描了$\beta \in [0, 1]$和$k \in \{1,\ldots,7\}$的组合，计算每种配置下的类内相似度、类间相似度与轮廓系数（融合公式采用式(\ref{eq:fusion})的约定：$\beta=1$表示不使用知识库的原始嵌入，$\beta=0$表示完全依赖检索浓缩语义）。图\ref{fig:heatmap}以热图形式展示了完整扫描结果。
+
+% 通栏热图：3 面板横排（figure* 双栏浮动）
+\begin{figure*}[htbp]
+\centering
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    view={0}{90}, width=0.27\textwidth, height=4.8cm,
+    xlabel={$\beta$}, ylabel={$k$},
+    xmin=0, xmax=1, ymin=1, ymax=7,
+    enlarge x limits=false, enlarge y limits=false,
+    xtick={0,0.25,0.5,0.75,1}, ytick={1,3,5,7},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={类内相似度}, title style={font=\small\bfseries},
+    colorbar, colorbar style={font=\footnotesize, width=8pt, height=3.5cm}
+]
+\addplot[matrix plot, mesh/cols=11, point meta=explicit, colormap name=heat]
+  table[x=beta, y=k, meta=value] {pgfdata/heatmap_intra.dat};
+\end{axis}
+\end{tikzpicture}}
+\hfill
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    view={0}{90}, width=0.27\textwidth, height=4.8cm,
+    xlabel={$\beta$}, ylabel={$k$},
+    xmin=0, xmax=1, ymin=1, ymax=7,
+    enlarge x limits=false, enlarge y limits=false,
+    xtick={0,0.25,0.5,0.75,1}, ytick={1,3,5,7},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={类间相似度}, title style={font=\small\bfseries},
+    colorbar, colorbar style={font=\footnotesize, width=8pt, height=3.5cm}
+]
+\addplot[matrix plot, mesh/cols=11, point meta=explicit, colormap name=heat]
+  table[x=beta, y=k, meta=value] {pgfdata/heatmap_inter.dat};
+\end{axis}
+\end{tikzpicture}}
+\hfill
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    view={0}{90}, width=0.27\textwidth, height=4.8cm,
+    xlabel={$\beta$}, ylabel={$k$},
+    xmin=0, xmax=1, ymin=1, ymax=7,
+    enlarge x limits=false, enlarge y limits=false,
+    xtick={0,0.25,0.5,0.75,1}, ytick={1,3,5,7},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={轮廓系数}, title style={font=\small\bfseries},
+    colorbar, colorbar style={font=\footnotesize, width=8pt, height=3.5cm}
+]
+\addplot[matrix plot, mesh/cols=11, point meta=explicit, colormap name=heat]
+  table[x=beta, y=k, meta=value] {pgfdata/heatmap_silhouette.dat};
+\end{axis}
+\end{tikzpicture}}
+\caption{$\beta$与$k$联合影响热图}
+\label{fig:heatmap}
+\end{figure*}
+
+热图中类内相似度随$\beta$变化的模式尤为关键。当$\beta$接近1（即几乎不使用知识库）时，类内相似度最低（0.62）；随着$\beta$减小（浓缩语义的权重增加），类内相似度系统性地上升，在$\beta=0$且$k=7$时达到 0.85——表示增强将同类样本拉向共同的类别语义锚点，类内紧致性显著改善。类间相似度亦随$\beta$减小而上升，但增幅小于类内相似度（0.46$\to$0.65），类内—类间相似度间隔从 0.16 扩大至 0.20，类间相对分离度改善。轮廓系数热图与上述分析一致：轮廓系数随$\beta$减小而单调上升（从$\beta=1$时的 0.10 提升至$\beta=0$时的 0.14--0.25），且检索数量$k$越大、轮廓系数越高——这印证了式(\ref{eq:fusion})中``类别语义锚点 + 实例级偏移''的机制：更强的浓缩语义权重提供更稳定的聚类中心指示。
+
+检索数量$k$的影响在三幅热图中呈现一致模式：$k$值越大（5--7），类内一致性与轮廓系数越高，但增幅随$k$增大而递减（$k$从1增至3时轮廓系数提升 0.05--0.08，从5增至7时仅提升约 0.01），说明少量高相似检索锚点已能提供足够的类别语义；这一观察与\S 5.1 中超参数搜索选出的$k=7$、$\beta \approx 0.38$配置一致——在轮廓系数之外，聚类数准确率等复合指标进一步约束了过强的浓缩语义权重。
+
+{\heiti \subsection{$\beta$对正负样本距离的影响}}
+
+为定量刻画$\beta$对距离结构的影响，我们从测试集中随机采样查询样本，以同类样本作为正例、异类样本作为负例（检索数量固定为$k=3$），计算不同$\beta$下查询样本与正例、负例之间的平均欧氏距离。图\ref{fig:distance}展示了这两条距离曲线随$\beta$的变化趋势。
+
+\begin{figure}[H]
+  \centering
+  \pgs{\begin{tikzpicture}
+  \begin{axis}[
+      width=0.92\linewidth, height=5.8cm,
+      xlabel={$\beta$}, ylabel={平均欧氏距离},
+      every axis label/.style={font=\footnotesize},
+      tick label style={font=\scriptsize},
+      legend pos=north east, legend style={font=\footnotesize, rounded corners=2pt, draw=gray!50, fill=white, fill opacity=0.9, inner sep=3pt},
+      grid=both, grid style={gray!30}, minor tick num=1,
+      axis line style={line width=0.6pt}
+  ]
+  \addplot[color=blue!75!black, very thick, mark=*, mark size=1.8pt, mark options={fill=blue!75!black}] table[x=beta, y=pos_distance] {pgfdata/distance_beta.dat};
+  \addlegendentry{正例距离}
+  \addplot[color=red!75!black, very thick, mark=square*, mark size=1.6pt, mark options={fill=red!75!black}] table[x=beta, y=neg_distance] {pgfdata/distance_beta.dat};
+  \addlegendentry{负例距离}
+  \end{axis}
+  \end{tikzpicture}}
+  \caption{正负样本距离曲线}
+  \label{fig:distance}
+\end{figure}
+
+在图\ref{fig:distance}中，两条距离曲线呈现截然不同的变化模式。随着$\beta$增大（原始嵌入成分增加、浓缩语义权重降低），pos\_distance 从$\beta=0$时的 0.434 显著上升至$\beta=1$时的 0.787（$+81\%$）；而 neg\_distance 基本平稳，始终在 0.650--0.709 之间小幅波动。因此正负例距离间隔（neg\_distance $-$ pos\_distance）随$\beta$减小（净化增强）而单调扩大：在$\beta=0$（完全依赖净化浓缩语义）时为 0.262，在$\beta=0.3$时为 0.178，在$\beta=0.5$时收窄至 0.105，而在$\beta=1$（纯原始嵌入）时反转为 $-0.077$——此时正例平均距离反而超过负例，原始嵌入空间几乎丧失对正负样本的区分能力。这表明净化越强，同类样本越被类别语义锚点拉近、正负例的相对分离度越好，与\S 5.5 热图中类内—类间相似度间隔随净化增强而扩大的观察一致。
+
+需要指出的是，距离绝对尺度的变化并不等同于类别可分的退化：聚类所依赖的是类内—类间距离的相对结构而非绝对尺度。当$\beta=1$时正负例间隔为负，说明仅凭原始嵌入无法在距离上区分正负样本；随着净化增强（$\beta$减小），间隔转正并持续扩大，表明增强表示在保持类内紧致的同时改善了类间分离。这也解释了\S 5.1 中超参数搜索为何在复合评估函数下选择$\beta \approx 0.38$而非更小的值：在$\beta=0.38$处正负例间隔已达 0.150，继续减小$\beta$虽可进一步扩大间隔，但过强的浓缩语义权重使预测聚类数偏离真实类别数（聚类数准确率下降），复合评分因此在中等$\beta$区间达到最优。
+
+{\heiti \subsection{可视化分析}}
+
+为进一步直观展示增强表示对聚类划分的改进效果，我们从数据集中选取了三类典型缺陷（``焊接设备标识错误及状态不符问题''``钢筋绑扎问题''``测量仪器管理问题''），使用 PCA 将嵌入分别降维至 2D 与 3D 空间进行可视化（在选取的三类子集上以调优后的超参数重新执行凝聚层次聚类）。图\ref{fig:pca}展示了真实标签与两种框架配置（nr0 基线、nr-1 完整框架）下的聚类划分对比，其中颜色表示与真实类别对齐后的簇归属（经由匈牙利匹配对齐）。
+
+% ========== 图7：PCA 10 面板 PGFPlots 通栏图（figure* 双栏浮动） ==========
+% 第 1 行 2D：Ground-Truth / nr0 / nr-1 / nr0-fail / nr-1-fail
+% 第 2 行 3D：同上序；右侧两列为预测失败差异图（灰=预测正确，红=预测失败）
+\begin{figure*}[htbp]
+\centering
+\resizebox{0.185\textwidth}{!}{\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.104\textwidth,
+    title={Ground-Truth}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, meta=label] {pgfdata/pca_2d_Ground_Truth.dat};
+\end{axis}
+\end{tikzpicture}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.104\textwidth,
+    title={nr0（无净化）}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, meta=label] {pgfdata/pca_2d_original.dat};
+\end{axis}
+\end{tikzpicture}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.104\textwidth,
+    title={nr-1（有净化）}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, meta=label] {pgfdata/pca_2d_purification.dat};
+\end{axis}
+\end{tikzpicture}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.104\textwidth,
+    title={nr0-fail}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=failmap, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, meta=fail] {pgfdata/pca_2d_original_fail.dat};
+\end{axis}
+\end{tikzpicture}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.104\textwidth,
+    title={nr-1-fail}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=failmap, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, meta=fail] {pgfdata/pca_2d_purification_fail.dat};
+\end{axis}
+\end{tikzpicture}}}
+
+\vspace{0.4em}
+\resizebox{0.185\textwidth}{!}{\pgs{\hspace*{7.2pt}\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.096\textwidth,
+    view={-60}{25},
+    title={Ground-Truth (3D)}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}, zticklabel style={font=\tiny},
+    grid=major, grid style={gray!25}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, z=z, meta=label] {pgfdata/pca_3d_Ground_Truth.dat};
+\end{axis}
+\end{tikzpicture}\hspace*{-7.2pt}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\hspace*{7.2pt}\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.096\textwidth,
+    view={-60}{25},
+    title={nr0 (3D)}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}, zticklabel style={font=\tiny},
+    grid=major, grid style={gray!25}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, z=z, meta=label] {pgfdata/pca_3d_original.dat};
+\end{axis}
+\end{tikzpicture}\hspace*{-7.2pt}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\hspace*{7.2pt}\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.096\textwidth,
+    view={-60}{25},
+    title={nr-1 (3D)}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=cls4, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}, zticklabel style={font=\tiny},
+    grid=major, grid style={gray!25}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, z=z, meta=label] {pgfdata/pca_3d_purification.dat};
+\end{axis}
+\end{tikzpicture}\hspace*{-7.2pt}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\hspace*{7.2pt}\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.096\textwidth,
+    view={-60}{25},
+    title={nr0-fail (3D)}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=failmap, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}, zticklabel style={font=\tiny},
+    grid=major, grid style={gray!25}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, z=z, meta=fail] {pgfdata/pca_3d_original_fail.dat};
+\end{axis}
+\end{tikzpicture}\hspace*{-7.2pt}}}
+\hfill
+\resizebox{0.185\textwidth}{!}{\pgs{\hspace*{7.2pt}\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.12\textwidth, height=0.096\textwidth,
+    view={-60}{25},
+    title={nr-1-fail (3D)}, title style={font=\scriptsize\bfseries},
+    pca axis,
+    colormap name=failmap, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    xticklabel style={font=\scriptsize}, yticklabel style={font=\scriptsize}, zticklabel style={font=\tiny},
+    grid=major, grid style={gray!25}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=x, y=y, z=z, meta=fail] {pgfdata/pca_3d_purification_fail.dat};
+\end{axis}
+\end{tikzpicture}\hspace*{-7.2pt}}}
+\caption{PCA 聚类可视化对比（第 1 行 2D、第 2 行 3D；前三列：真实标签 / nr0 基线 / nr-1 完整框架；后两列：预测失败差异图，灰色表示与真实标签一致的样本，红色表示聚类预测失败的样本）}
+\label{fig:pca}
+\end{figure*}
+
+可视化结果显示了几个关键模式。在原始嵌入空间中（nr0），聚类划分与真实类别的对齐度有限：三个类别的样本在 PCA 投影中相互交错，簇边界模糊，与\S 3.2 中分析的类间边界模糊问题一致；在选取的三类子集上，nr0 配置的 ARI 为 0.763。经表示增强后（nr-1），聚类划分与真实类别的对齐度明显提升，子集 ARI 提升至 0.836：相同数据点在嵌入空间中呈现出更好的分离性，类间重叠区域显著缩小，每个类别的包络更加紧凑，簇划分结果由模糊交错的边界变为相对清晰的分离界面，直观印证了表\ref{tab:rep_quality}中完整框架相较基线在 ARI 上的提升。
+
+图\ref{fig:pca}右侧两列进一步以预测失败差异图的形式量化了这一改进。在选取的三类子集（共 353 个样本）上，nr0 配置共有 60 个样本（占 17.0\%）的聚类预测与真实标签不一致；nr-1 配置的失败样本降至 46 个（13.0\%），失败率下降约 4 个百分点。失败样本的减少与子集 ARI 从 0.763 提升至 0.836 的趋势一致：表示增强不仅提高了整体的簇划分正确率，还系统性地修正了位于类别边界附近的错误划分，这与\S 5.6 距离分析中正负例间隔随净化增强而扩大的结论相互印证——边界样本正是受益于类间相对分离度改善的最直接对象。
+
+{\heiti \subsection{超参数搜索过程分析}}
+
+% 图：Optuna 搜索过程实验（对应 plot_clusters.py 三联图；figure* 通栏）
+\begin{figure*}[htbp]
+\centering
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    width=0.27\textwidth, height=4.8cm,
+    xlabel={$distance\_threshold$}, ylabel={score},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={nr0 搜索轨迹}, title style={font=\small\bfseries},
+    xmin=0, xmax=4, ymin=0.3, ymax=0.8,
+    xtick={0,1,2,3,4}, ytick={0.3,0.4,0.5,0.6,0.7,0.8},
+    grid=both, grid style={gray!30}, minor tick num=1,
+    axis line style={line width=0.5pt}
+]
+\addplot[only marks, mark=*, mark size=1.5pt, color=blue!60!black, fill=blue!40, draw=blue!70!black] table[x=distance_threshold, y=score] {pgfdata/optuna_nr0.dat};
+\end{axis}
+\end{tikzpicture}}
+\hfill
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    scale only axis, width=0.30\textwidth, height=0.19\textwidth,
+    view={-20}{25},
+    plot box ratio={1 1 1},
+    xmin=0, xmax=4, ymin=0, ymax=1, zmin=0.3, zmax=0.8,
+    xlabel={$distance\_threshold$}, ylabel={$\beta$}, zlabel={score},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={nr-1 搜索轨迹}, title style={font=\small\bfseries},
+    colormap name=plasma7, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    point meta min=1, point meta max=7,
+    colorbar, colorbar style={font=\footnotesize, width=8pt, at={($(parent axis.right of north east)+(-0.2cm,0)$)}},
+    grid=major, grid style={gray!20}
+]
+\addplot3[only marks, scatter, scatter src=explicit, mark=*, mark size=2pt] table[x=distance_threshold, y=beta, z=score, meta=n_results] {pgfdata/optuna_nr1.dat};
+\end{axis}
+\end{tikzpicture}}
+\hfill
+\pgs{\begin{tikzpicture}
+\begin{axis}[
+    width=0.27\textwidth, height=4.8cm,
+    xlabel={$distance\_threshold$}, ylabel={score},
+    every axis label/.style={font=\footnotesize},
+    tick label style={font=\scriptsize},
+    title={nr-1 搜索投影}, title style={font=\small\bfseries},
+    colormap name=plasma7, scatter/use mapped color={draw=mapped color, fill=mapped color},
+    point meta min=1, point meta max=7,
+    colorbar, colorbar style={font=\footnotesize, width=8pt},
+    xmin=0, xmax=4, ymin=0.3, ymax=0.8,
+    xtick={0,1,2,3,4}, ytick={0.3,0.4,0.5,0.6,0.7,0.8},
+    grid=both, grid style={gray!30}, minor tick num=1,
+    axis line style={line width=0.5pt}
+]
+\addplot[only marks, scatter, scatter src=explicit, mark=*, mark size=1.5pt] table[x=distance_threshold, y=score, meta=n_results] {pgfdata/optuna_nr1.dat};
+\end{axis}
+\end{tikzpicture}}
+\caption{Optuna 搜索过程：nr0 与 nr-1 配置在标签子集上的全部 200 次 TPE 评估分布（纵轴为式(\ref{eq:composite})的复合评估分数；nr-1 面板按检索数量$k$着色）}
+\label{fig:optuna_search}
+\end{figure*}
+
+图\ref{fig:optuna_search}给出了两种配置在标签子集上的全部 200 次 TPE 评估分布。左侧面板为 nr0 配置的搜索轨迹：其搜索空间仅含截断高度一维（$\beta$ 固定为 1、$k$ 固定为 0），200 次评估的分数均值 0.655、最高 0.690，最优截断高度 2.706；中间与右侧面板为 nr-1 配置在三维空间（截断高度、$\beta$、$k$）中的评估分布及其二维投影，按检索数量$k$着色。可以看到，TPE 将评估快速集中于高分区：nr-1 的 200 次评估中有 155 次（77.5\%）选择了 $k \geq 6$（其中 $k=7$ 占 110 次），表明采样器迅速识别出较大检索数量的优势；最优配置在截断高度 2.597、$\beta=0.379$、$k=7$ 处取得最高分 0.742，较 nr0 的最优 0.690 提升 0.052。这一结果与\S 5.5 热图及\S 5.6 距离分析中``适度浓缩语义权重（$\beta \approx 0.38$）与较大检索数量（$k=7$）最优''的观察相互印证，且该最优配置正是图\ref{fig:pca}等可视化与聚类实验实际采用的参数。
+
+% ===================================================================
+\section{\heiti 讨论}
+\label{sec:discussion}
+
+{\heiti \subsection{框架的通用性}}
+
+本文提出的聚类框架虽由核电工程质量偏差场景驱动，但其核心模块均不依赖核电领域特定假设。语义净化的四类噪声范畴描述的是专名密集文本的通用噪声模式，表示增强的``类别语义锚点 + 实例级偏移''机制亦与具体领域无关，表示组件与簇划分组件均可按领域替换。我们预期该框架可迁移至其他专名密集的领域短文本聚类场景（如设备运维记录、法律文书、医疗医嘱等）。迁移所需的工作仅为：替换净化提示中的专名体系与模板词表、以目标领域语料重建语义知识库。诚然，本文实验仅在核电领域开展，跨领域的迁移效果有待后续工作验证。
+
+{\heiti \subsection{知识库维护策略}}
+
+当前语义知识库的构建是一次性离线过程。在实际工业部署中，新类型缺陷问题会持续出现（如新设备型号对应的新类别），知识库需增量更新以保持检索质量。一个可行方向是设计基于新样本与现有知识库距离的增量触发机制：当新样本与最近知识库条目的余弦距离持续超过阈值时，触发增量编码入库。如何在无需重新编码全部历史数据的前提下维持检索一致性，是值得进一步研究的问题。
+
+{\heiti \subsection{大模型部署替代方案}}
+
+本文使用 API 调用形式的第三方 LLM 完成语义净化，在部署场景中面临成本、延迟与数据隐私三方约束。对于大规模在线应用场景，可考虑两条替代路径：(1)~采用经领域文本蒸馏的小型 Seq2Seq 模型（如 T5-Small 微调），在保持净化质量的同时将推理延迟降低一个数量级；(2)~将净化逻辑编码为可微分的文本编辑网络，与下游嵌入模型端到端联合训练，消解 API 调用的外部依赖。
+
+% ===================================================================
+\section{\heiti 结论}
+\label{sec:conclusion}
+
+本文针对专名密集领域短文本聚类中噪声扭曲距离结构的问题，从注意力机制的角度形式化分析了噪声对聚类输入空间的双重破坏效应——类内距离膨胀与类间边界模糊，并论证了该破坏对下游聚类算法的不可补偿性，由此确立了聚类框架``输入层净化''设计的问题逻辑基础，并归纳出``聚类输入空间的质量决定聚类性能上界''的核心论点。在此基础上，我们提出了 SPEAR——一个面向领域短文本的语义净化与增强聚类框架：以 LLM 驱动的输入层语义净化解除噪声在自注意力中的竞争，以表示增强机制补偿净化信息损失，最终以增强表示驱动凝聚层次聚类完成簇划分，构成``语义净化—表示增强—层次聚类''的完整聚类流水线。在核电质量偏差数据集上，SPEAR 将凝聚层次聚类的 ARI 从 0.155 提升至 0.281。
+
+本文的落脚点是完整的聚类框架，而非单个聚类算法或表示方法。通过从``框架组件选择''视角系统比较 12 种主流嵌入模型作为表示组件、考察表示增强模块对 9 种聚类算法的差异化影响，我们归纳出三条可迁移的框架设计结论：(1) 中文领域预训练嵌入是框架表示组件的首选，通用多语言模型在该场景下近乎失效；(2) 单纯放大模型规模（维度或参数量）无益于聚类性能提升；(3) 表示增强模块与层次/质心类聚类范型相容、与密度类范型冲突，框架应搭配层次聚类等全局距离结构依赖型算法。这些组件选择原则为专名密集领域短文本聚类框架的设计与部署提供了实证依据。
+
+% ========== 致谢 ==========
+\vspace {3mm}
+\zihao{5}{
+\noindent \textsf{致\quad 谢}\quad \textit{ *致谢内容（占位，请补充）* }}
+
+% ========== 参考文献 ==========
+\vspace {5mm}
+\centerline
+{\zihao{5}\textsf{参~考~文~献}}
+\zihao{5-} \addtolength{\itemsep}{-1em}
+\vspace {1.5mm}
+\bibliographystyle{gbt7714-numerical}
+\bibliography{ref.bib}
+
+% ========== 附录 ==========
+% 模板要求：详细的定理证明、公式推导、原始数据等应放入附录。
+% 本文无此类内容，故本节已删除；若后续补充定理证明/推导/数据，可在此处加回：
+% \noindent {\zihao{5}\bf{附录A}.}
+% {\zihao{5-}\setlength\parindent{2em} *附录内容，小5号宋体* }
+
+% ========== 作者简介（Biography） ==========
+% 模板要求提供 1 寸照片（切换到 biography 环境并填入照片文件名即可）：
+% \begin{biography}[photo-author1.jpg] ... \end{biography}
+\begin{biographynophoto}
+\noindent
+\textbf{First A. Author}\ \ *中文简介（出生年，学位/学历，职称，主要研究领域，E-mail）。英文简介与中文一致。*（占位，请补充；字体为小5号Times New Roman）
+\end{biographynophoto}
+
+\begin{biographynophoto}
+\noindent
+\textbf{Second B. Author}\ \ *作者简介占位*（占位，请补充）
+\end{biographynophoto}
+
+\begin{biographynophoto}
+\noindent
+\textbf{Third C. Author}\ \ *作者简介占位*（占位，请补充）
+\end{biographynophoto}
+
+% ========== 英文背景介绍（Background，约400词） ==========
+\zihao{5}
+\noindent \textbf{Background}
+
+\zihao{5-}{
+\setlength\parindent{2em}
+% 草稿：请作者结合课题实际扩充至约400词，并补充项目/基金信息
+The rapid digitalization of industrial construction and operation has produced massive volumes of short business texts, including quality inspection records, equipment maintenance logs, and deviation reports. In nuclear power construction, thousands of such records are generated daily at construction sites. Each record is a short text of roughly twenty to thirty Chinese characters describing a specific problem observed on site, such as improper placement of reinforcement mesh or insecure fastening of wall inserts. These records are the primary carriers of quality information, and organizing them into meaningful categories is a fundamental step towards intelligent construction quality management.
+
+However, the categories of these records are unknown in advance and evolve continuously with the business, which makes supervised classification infeasible and unsupervised clustering the natural choice. Internationally, text clustering has been extensively studied, and pre-trained language models have provided strong representations for general text. Yet domain-specific short texts in industrial scenarios are dominated by named entities—company names, personnel names, engineering codes, and spatio-temporal expressions—that carry little category-discriminative information but systematically distort the embedding distance structure relied upon by clustering algorithms. Existing methods mostly refine clustering at the representation or algorithm level and do not address the distortion at its source.
+
+This paper proposes SPEAR, a semantic purification and representation-enhanced clustering framework that strips noise at the input layer before encoding, compensates the purification loss through retrieval-augmented representation enhancement, and finally performs agglomerative hierarchical clustering. The framework is validated on a real nuclear power quality deviation dataset, improving the ARI of agglomerative hierarchical clustering from 0.155 to 0.281. *（此处请补充：课题所属项目名称及其意义、本研究群体以往在此方向上的研究成果、本文成果在大课题中的定位；如涉及863/973等计划，注意项目英文名称书写正确。）*
+}
+
+\end{document}

@@ -1,0 +1,336 @@
+apiVersion: workflow.openai.local/v1alpha1
+kind: Workflow
+metadata:
+  id: hazard-analysis
+  name: 核电工程图片隐患识别与定级
+  description: 确定性编排视觉识别、知识图谱、规则评估、受约束推理、风险定级和人工复核
+  version: 1.0.0
+  owner: safety-platform
+  labels:
+    domain: nuclear-construction-safety
+    compatibility: analysis-result-v2
+spec:
+  mode: dag
+  inputSchemaRef: schema://hazard-analysis/input@1.0.0
+  outputSchemaRef: schema://analysis-result@2.0.0
+  initialState:
+    data:
+      fallback: {}
+      reviewReasons: []
+  entryNodes: [preflight]
+  terminalNodes: [assemble, reject_run]
+  dependencies:
+    modelProfiles:
+      vision: model-profile://multimodal-default@1.0.0
+      reasoning: model-profile://reasoning-default@1.0.0
+    prompts:
+      vision: prompt://hazard-vision@2.0.0
+      reasoning: prompt://hazard-reasoning@3.0.0
+    ruleSet: ruleset://hazard-domain@1.0.0
+    graph: graph://hazard-knowledge@1.0.0
+    gradingPolicy: grading://evidence-risk@3.0.0
+    knowledge: knowledge://controlled-safety-docs@1.0.0
+  policies:
+    activeExecutionMs: 300000
+    maxRunLifetimeMs: 172800000
+    maxTransitions: 32
+    maxVisitsPerNode: 1
+    routing:
+      onAmbiguous: fail
+      onNoMatch: fail
+    budgets:
+      maxNodeCalls: 16
+      maxModelCalls: 5
+      maxToolCalls: 16
+      maxRetrievals: 10
+      maxInputTokens: 60000
+      maxOutputTokens: 40000
+    security:
+      allowedNodeTypes:
+        - input.preflight
+        - llm.vision
+        - knowledge_graph.query
+        - rules.evaluate
+        - llm.reason
+        - risk.grade
+        - human.review
+        - result.assemble
+        - run.reject
+      allowedSecretRefs:
+        - secret://model/default
+      allowedKnowledgeScopes: [general, nuclear, enterprise, historical_cases]
+      allowNonIdempotent: false
+      requireSignedDefinition: true
+    human:
+      mode: block_and_resume
+  nodes:
+    - id: preflight
+      uses: input.preflight@1.0.0
+      with:
+        acceptedMediaTypes: [image/jpeg, image/png, image/webp]
+        maxBytes: 36700160
+        requiredScope: workflow:hazard-analysis:run
+      input:
+        image:
+          from: input#/image
+      policy:
+        timeoutMs: 2000
+        maxAttempts: 1
+
+    - id: vision
+      uses: llm.vision@1.0.0
+      with:
+        modelProfileRef: model-profile://multimodal-default@1.0.0
+        promptRef: prompt://hazard-vision@2.0.0
+        outputSchemaRef: schema://vision-result@1.0.0
+        maxCandidates: 10
+      input:
+        image:
+          from: input#/image
+        scenario:
+          from: input#/scenario
+          optional: true
+      publish:
+        - from: output#/imageSummary
+          to: data#/imageSummary
+        - from: output#/candidates
+          to: data#/candidates
+        - from: output#/lowEvidence
+          to: data#/lowEvidence
+      policy:
+        timeoutMs: 130000
+        maxAttempts: 2
+        retryOn: [MODEL_RATE_LIMITED, MODEL_UNAVAILABLE, NODE_TIMEOUT]
+
+    - id: kg_query
+      uses: knowledge_graph.query@1.0.0
+      with:
+        graphRef: graph://hazard-knowledge@1.0.0
+        operation: match_and_assess
+        maxPathsPerCandidate: 6
+        maxDepth: 4
+      input:
+        candidates:
+          from: data#/candidates
+      publish:
+        - from: output#/assessments
+          to: data#/kgAssessments
+      policy:
+        timeoutMs: 8000
+        maxAttempts: 2
+        retryOn: [KNOWLEDGE_UNAVAILABLE, NODE_TIMEOUT]
+
+    - id: rules_eval
+      uses: rules.evaluate@1.0.0
+      with:
+        ruleSetRef: ruleset://hazard-domain@1.0.0
+        conflictPolicy: highest_priority_then_review
+        includeEffects: [add_context, require_human_review, score_factor, hard_constraint]
+      input:
+        candidates:
+          from: data#/candidates
+        kgAssessments:
+          from: data#/kgAssessments
+          default: []
+      publish:
+        - from: output#/matches
+          to: data#/ruleMatches
+      policy:
+        timeoutMs: 5000
+        maxAttempts: 1
+
+    - id: reasoning
+      uses: llm.reason@1.0.0
+      with:
+        modelProfileRef: model-profile://reasoning-default@1.0.0
+        promptRef: prompt://hazard-reasoning@3.0.0
+        outputSchemaRef: schema://reasoning-result@2.0.0
+        citationMode: keys_only
+      input:
+        candidates:
+          from: data#/candidates
+        kgAssessments:
+          from: data#/kgAssessments
+          default: []
+        ruleMatches:
+          from: data#/ruleMatches
+          default: []
+      publish:
+        - from: output#/hazards
+          to: data#/reasoningHazards
+      policy:
+        timeoutMs: 130000
+        maxAttempts: 2
+        retryOn: [MODEL_RATE_LIMITED, MODEL_UNAVAILABLE, NODE_OUTPUT_INVALID, NODE_TIMEOUT]
+        schemaRepairAttempts: 1
+
+    - id: risk_grade
+      uses: risk.grade@1.0.0
+      with:
+        policyRef: grading://evidence-risk@3.0.0
+        bindCitationsByKey: true
+        rejectUnknownCitations: true
+        requireStandardEvidence: true
+        modelGradeAuthority: advisory
+      input:
+        candidates:
+          from: data#/candidates
+        reasoningHazards:
+          from: data#/reasoningHazards
+          default: []
+        kgAssessments:
+          from: data#/kgAssessments
+          default: []
+        ruleMatches:
+          from: data#/ruleMatches
+          default: []
+        fallback:
+          from: data#/fallback
+      publish:
+        - from: output#/hazards
+          to: data#/gradedHazards
+        - from: output#/overallRisk
+          to: data#/overallRisk
+        - from: output#/requiresReview
+          to: data#/requiresReview
+      policy:
+        timeoutMs: 5000
+        maxAttempts: 1
+
+    - id: human_review
+      uses: human.review@1.0.0
+      with:
+        assigneeRole: safety_reviewer
+        decisionSchemaRef: schema://hazard-review-decision@1.0.0
+        allowedDecisions: [approve, reject, patch]
+        dueIn: PT24H
+        onTimeout: reject
+        requireReasonFor: [reject, patch]
+      input:
+        hazards:
+          from: data#/gradedHazards
+          default: []
+        overallRisk:
+          from: data#/overallRisk
+          optional: true
+        reasons:
+          from: data#/reviewReasons
+      policy:
+        timeoutMs: 5000
+        maxAttempts: 1
+
+    - id: assemble
+      uses: result.assemble@1.0.0
+      with:
+        outputSchemaRef: schema://analysis-result@2.0.0
+        disclaimerRef: text://hazard-ai-disclaimer@1.0.0
+        preferHumanPatch: true
+      input:
+        imageSummary:
+          from: data#/imageSummary
+          default: 工程现场图片
+        hazards:
+          from: data#/gradedHazards
+          default: []
+        overallRisk:
+          from: data#/overallRisk
+          optional: true
+      policy:
+        timeoutMs: 5000
+        maxAttempts: 1
+        idempotency:
+          operation: assemble-analysis-result
+
+    - id: reject_run
+      uses: run.reject@1.0.0
+      with:
+        code: HUMAN_REVIEW_REJECTED
+      input: {}
+      policy:
+        timeoutMs: 2000
+        maxAttempts: 1
+
+  edges:
+    - { id: preflight_to_vision, from: preflight, to: vision, on: succeeded, priority: 100 }
+    - id: vision_failed_to_review
+      from: vision
+      to: human_review
+      on: failed
+      priority: 100
+      transitionPatch:
+        - { op: add, path: data#/reviewReasons/-, value: vision_failed }
+    - id: vision_clean_to_assemble
+      from: vision
+      to: assemble
+      on: succeeded
+      priority: 100
+      when:
+        all:
+          - { eq: { path: nodes#/vision/output/candidateCount, value: 0 } }
+          - { eq: { path: nodes#/vision/output/lowEvidence, value: false } }
+    - id: vision_uncertain_to_review
+      from: vision
+      to: human_review
+      on: succeeded
+      priority: 90
+      when:
+        all:
+          - { eq: { path: nodes#/vision/output/candidateCount, value: 0 } }
+          - { eq: { path: nodes#/vision/output/lowEvidence, value: true } }
+      transitionPatch:
+        - { op: add, path: data#/reviewReasons/-, value: low_evidence }
+    - id: vision_candidates_to_kg
+      from: vision
+      to: kg_query
+      on: succeeded
+      priority: 80
+      when:
+        gt: { path: nodes#/vision/output/candidateCount, value: 0 }
+    - { id: kg_to_rules, from: kg_query, to: rules_eval, on: succeeded, priority: 100 }
+    - id: kg_failed_to_rules
+      from: kg_query
+      to: rules_eval
+      on: failed
+      priority: 100
+      transitionPatch:
+        - { op: add, path: data#/fallback/kgDegraded, value: true }
+    - { id: rules_to_reasoning, from: rules_eval, to: reasoning, on: succeeded, priority: 100 }
+    - id: rules_failed_to_grade
+      from: rules_eval
+      to: risk_grade
+      on: failed
+      priority: 100
+      transitionPatch:
+        - { op: add, path: data#/fallback/rulesFailed, value: true }
+    - { id: reasoning_to_grade, from: reasoning, to: risk_grade, on: succeeded, priority: 100 }
+    - id: reasoning_failed_to_grade
+      from: reasoning
+      to: risk_grade
+      on: failed
+      priority: 100
+      transitionPatch:
+        - { op: add, path: data#/fallback/reasoningFailed, value: true }
+    - id: grade_to_review
+      from: risk_grade
+      to: human_review
+      on: succeeded
+      priority: 100
+      when:
+        eq: { path: nodes#/risk_grade/output/requiresReview, value: true }
+    - id: grade_to_assemble
+      from: risk_grade
+      to: assemble
+      on: succeeded
+      priority: 90
+      when:
+        eq: { path: nodes#/risk_grade/output/requiresReview, value: false }
+    - { id: review_approved_to_assemble, from: human_review, to: assemble, on: approved, priority: 100 }
+    - id: review_flagged_to_assemble
+      from: human_review
+      to: assemble
+      on: succeeded
+      priority: 90
+      when:
+        eq: { path: nodes#/human_review/output/mode, value: flag_only }
+    - { id: review_rejected_to_reject, from: human_review, to: reject_run, on: rejected, priority: 100 }
+    - { id: review_timeout_to_reject, from: human_review, to: reject_run, on: timed_out, priority: 100 }

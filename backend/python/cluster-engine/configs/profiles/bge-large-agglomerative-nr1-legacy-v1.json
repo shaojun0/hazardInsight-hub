@@ -1,0 +1,22 @@
+{
+  "profile_id": "bge-large-agglomerative-nr1-legacy-v1",
+  "algorithm": "agglomerative",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "distance_threshold": 2.6535528326328843
+  },
+  "features": {
+    "beta": 0.4973823453680069,
+    "n_results": 6,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/AgglomerativeClusterOptimizer_-1_0_best_param.json",
+  "source_sha256": "c3bdc570f8148bd847924e581c0a317c56cbef58438dff8400431e03efc42279",
+  "max_samples": 500
+}

@@ -1,0 +1,130 @@
+[
+  {
+    "id": "E-001",
+    "type": "enterprise",
+    "documentName": "项目现场安全隐患排查治理管理办法（演示）",
+    "documentCode": "DEMO-E-001",
+    "version": "演示 V1.0",
+    "status": "演示数据",
+    "updatedAt": "2026-01-15",
+    "category": "综合",
+    "clauses": [
+      {
+        "id": "E-001-3.2.1",
+        "clause": "3.2.1",
+        "clauseTitle": "排查闭环流程",
+        "content": "隐患按周开展排查，执行排查、登记、整改、复查、销号的闭环台账管理，责任到人。",
+        "category": "综合",
+        "keywords": ["隐患", "排查", "闭环", "台账", "整改", "销号"]
+      },
+      {
+        "id": "E-001-4.1.3",
+        "clause": "4.1.3",
+        "clauseTitle": "重大隐患处置",
+        "content": "发现重大隐患应立即上报并停止相关作业，整改完成经验收合格后方可复工。",
+        "category": "综合",
+        "keywords": ["重大隐患", "停工", "上报", "复工"]
+      }
+    ]
+  },
+  {
+    "id": "E-002",
+    "type": "enterprise",
+    "documentName": "施工现场临时用电检查细则（演示）",
+    "documentCode": "DEMO-E-002",
+    "version": "演示 V1.0",
+    "status": "演示数据",
+    "updatedAt": "2026-01-15",
+    "category": "临时用电",
+    "clauses": [
+      {
+        "id": "E-002-4.2.3",
+        "clause": "4.2.3",
+        "clauseTitle": "插排负载检查",
+        "content": "检查插排容量是否与负载匹配，禁止大功率设备共用同一插排；检查插排外观、发热情况及线缆是否老化破损。",
+        "category": "临时用电",
+        "keywords": ["插排", "过载", "大功率", "发热", "老化"]
+      },
+      {
+        "id": "E-002-4.2.5",
+        "clause": "4.2.5",
+        "clauseTitle": "液体防护检查",
+        "content": "用电设备及插排附近严禁放置水瓶、水杯等液体容器，防止液体倾倒造成短路或触电。",
+        "category": "临时用电",
+        "keywords": ["液体", "水瓶", "水杯", "插排", "短路", "触电"]
+      },
+      {
+        "id": "E-002-5.1.2",
+        "clause": "5.1.2",
+        "clauseTitle": "电工专业检查",
+        "content": "临时用电检查应由专业电工执行，检查结果形成记录并归档备案。",
+        "category": "临时用电",
+        "keywords": ["电工", "专业检查", "记录"]
+      }
+    ]
+  },
+  {
+    "id": "E-003",
+    "type": "enterprise",
+    "documentName": "高处作业红线管理规定（演示）",
+    "documentCode": "DEMO-E-003",
+    "version": "演示 V1.0",
+    "status": "演示数据",
+    "updatedAt": "2026-01-15",
+    "category": "高处作业",
+    "clauses": [
+      {
+        "id": "E-003-3.1.1",
+        "clause": "3.1.1",
+        "clauseTitle": "高处作业红线行为",
+        "content": "高处作业未系安全带、防护缺失属于红线行为，一经发现立即停工并追究相关人员责任。",
+        "category": "高处作业",
+        "keywords": ["安全带", "红线", "高处作业", "停工"]
+      },
+      {
+        "id": "E-003-3.2.2",
+        "clause": "3.2.2",
+        "clauseTitle": "登高前检查",
+        "content": "登高作业前应检查脚手架、作业平台及安全带挂点可靠性，确认无误后方可作业。",
+        "category": "高处作业",
+        "keywords": ["登高", "脚手架", "挂点", "安全带", "检查"]
+      }
+    ]
+  },
+  {
+    "id": "E-004",
+    "type": "enterprise",
+    "documentName": "安全隐患分级与闭环管理程序（演示）",
+    "documentCode": "DEMO-E-004",
+    "version": "演示 V1.0",
+    "status": "演示数据",
+    "updatedAt": "2026-01-15",
+    "category": "定级",
+    "clauses": [
+      {
+        "id": "E-004-4.1.2",
+        "clause": "4.1.2",
+        "clauseTitle": "A/B 级隐患督办",
+        "content": "A、B 级隐患由项目负责人督办，限定整改时限并实行提级验证。",
+        "category": "定级",
+        "keywords": ["A级", "B级", "督办", "整改", "验证"]
+      },
+      {
+        "id": "E-004-4.2.1",
+        "clause": "4.2.1",
+        "clauseTitle": "整改验证销号",
+        "content": "隐患整改验证由安全管理部门执行，验证合格后方可签署销号。",
+        "category": "定级",
+        "keywords": ["验证", "销号", "整改"]
+      },
+      {
+        "id": "E-004-4.3.1",
+        "clause": "4.3.1",
+        "clauseTitle": "同类隐患再发生",
+        "content": "同类隐患重复发生的，应分析根本原因，更新标准、培训与检查清单。",
+        "category": "定级",
+        "keywords": ["重复发生", "根本原因", "培训"]
+      }
+    ]
+  }
+]

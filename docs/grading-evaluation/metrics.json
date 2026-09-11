@@ -1,0 +1,1571 @@
+{
+  "total": 3000,
+  "generatedAt": "2026-09-10T11:27:24.386Z",
+  "modes": {
+    "before": {
+      "attempted": 2075,
+      "missing": 925,
+      "invalid": 45,
+      "errorRecords": 75,
+      "calls": 415,
+      "inputTokens": 1039544,
+      "outputTokens": 2204123,
+      "operational": {
+        "n": 2075,
+        "agreement": 0.11132530120481927,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 11,
+            "B": 6,
+            "C": 0,
+            "D": 0
+          },
+          "C": {
+            "A": 28,
+            "B": 222,
+            "C": 91,
+            "D": 19
+          },
+          "D": {
+            "A": 95,
+            "B": 940,
+            "C": 529,
+            "D": 134
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 134,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 17,
+            "predicted": 1168,
+            "tp": 6,
+            "precision": 0.005136986301369863,
+            "recall": 0.35294117647058826,
+            "f1": 0.010126582278481013
+          },
+          "C": {
+            "support": 360,
+            "predicted": 620,
+            "tp": 91,
+            "precision": 0.14677419354838708,
+            "recall": 0.25277777777777777,
+            "f1": 0.18571428571428572
+          },
+          "D": {
+            "support": 1698,
+            "predicted": 153,
+            "tp": 134,
+            "precision": 0.8758169934640523,
+            "recall": 0.07891637220259129,
+            "f1": 0.14478660183684494
+          }
+        },
+        "balancedRecall": 0.22821177548365246,
+        "highRiskCount": 17,
+        "highRiskUnderestimated": 0,
+        "lowRiskOvergraded": 1564,
+        "adjacentErrors": 781,
+        "reviewCount": 1430
+      },
+      "validOnly": {
+        "n": 2030,
+        "agreement": 0.11083743842364532,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 11,
+            "B": 6,
+            "C": 0,
+            "D": 0
+          },
+          "C": {
+            "A": 28,
+            "B": 222,
+            "C": 85,
+            "D": 19
+          },
+          "D": {
+            "A": 95,
+            "B": 940,
+            "C": 490,
+            "D": 134
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 134,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 17,
+            "predicted": 1168,
+            "tp": 6,
+            "precision": 0.005136986301369863,
+            "recall": 0.35294117647058826,
+            "f1": 0.010126582278481013
+          },
+          "C": {
+            "support": 354,
+            "predicted": 575,
+            "tp": 85,
+            "precision": 0.14782608695652175,
+            "recall": 0.2401129943502825,
+            "f1": 0.18299246501614638
+          },
+          "D": {
+            "support": 1659,
+            "predicted": 153,
+            "tp": 134,
+            "precision": 0.8758169934640523,
+            "recall": 0.0807715491259795,
+            "f1": 0.1479028697571744
+          }
+        },
+        "balancedRecall": 0.22460857331561676,
+        "highRiskCount": 17,
+        "highRiskUnderestimated": 0,
+        "lowRiskOvergraded": 1525,
+        "adjacentErrors": 742,
+        "reviewCount": 1385
+      },
+      "groupedDevelopment": {
+        "n": 1676,
+        "agreement": 0.11157517899761336,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 9,
+            "B": 5,
+            "C": 0,
+            "D": 0
+          },
+          "C": {
+            "A": 21,
+            "B": 182,
+            "C": 65,
+            "D": 18
+          },
+          "D": {
+            "A": 78,
+            "B": 768,
+            "C": 413,
+            "D": 117
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 108,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 14,
+            "predicted": 955,
+            "tp": 5,
+            "precision": 0.005235602094240838,
+            "recall": 0.35714285714285715,
+            "f1": 0.010319917440660475
+          },
+          "C": {
+            "support": 286,
+            "predicted": 478,
+            "tp": 65,
+            "precision": 0.13598326359832635,
+            "recall": 0.22727272727272727,
+            "f1": 0.17015706806282724
+          },
+          "D": {
+            "support": 1376,
+            "predicted": 135,
+            "tp": 117,
+            "precision": 0.8666666666666667,
+            "recall": 0.08502906976744186,
+            "f1": 0.15486432825943083
+          }
+        },
+        "balancedRecall": 0.22314821806100874,
+        "highRiskCount": 14,
+        "highRiskUnderestimated": 0,
+        "lowRiskOvergraded": 1259,
+        "adjacentErrors": 622,
+        "reviewCount": 1136
+      },
+      "groupedHoldout": {
+        "n": 354,
+        "agreement": 0.10734463276836158,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 2,
+            "B": 1,
+            "C": 0,
+            "D": 0
+          },
+          "C": {
+            "A": 7,
+            "B": 40,
+            "C": 20,
+            "D": 1
+          },
+          "D": {
+            "A": 17,
+            "B": 172,
+            "C": 77,
+            "D": 17
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 26,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 3,
+            "predicted": 213,
+            "tp": 1,
+            "precision": 0.004694835680751174,
+            "recall": 0.3333333333333333,
+            "f1": 0.009259259259259259
+          },
+          "C": {
+            "support": 68,
+            "predicted": 97,
+            "tp": 20,
+            "precision": 0.20618556701030927,
+            "recall": 0.29411764705882354,
+            "f1": 0.24242424242424243
+          },
+          "D": {
+            "support": 283,
+            "predicted": 18,
+            "tp": 17,
+            "precision": 0.9444444444444444,
+            "recall": 0.06007067137809187,
+            "f1": 0.11295681063122924
+          }
+        },
+        "balancedRecall": 0.22917388392341623,
+        "highRiskCount": 3,
+        "highRiskUnderestimated": 0,
+        "lowRiskOvergraded": 266,
+        "adjacentErrors": 120,
+        "reviewCount": 249
+      },
+      "projects": {
+        "宁德项目": {
+          "n": 686,
+          "agreement": 0.119533527696793,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 1,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 7,
+              "B": 34,
+              "C": 8,
+              "D": 3
+            },
+            "D": {
+              "A": 27,
+              "B": 324,
+              "C": 208,
+              "D": 74
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 35,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 1,
+              "predicted": 358,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            },
+            "C": {
+              "support": 52,
+              "predicted": 216,
+              "tp": 8,
+              "precision": 0.037037037037037035,
+              "recall": 0.15384615384615385,
+              "f1": 0.05970149253731343
+            },
+            "D": {
+              "support": 633,
+              "predicted": 77,
+              "tp": 74,
+              "precision": 0.961038961038961,
+              "recall": 0.11690363349131122,
+              "f1": 0.2084507042253521
+            }
+          },
+          "balancedRecall": 0.09024992911248836,
+          "highRiskCount": 1,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 559,
+          "adjacentErrors": 246,
+          "reviewCount": 500
+        },
+        "陆丰项目": {
+          "n": 704,
+          "agreement": 0.078125,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 2,
+              "B": 1,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 5,
+              "C": 0,
+              "D": 2
+            },
+            "D": {
+              "A": 26,
+              "B": 402,
+              "C": 212,
+              "D": 54
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 28,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 3,
+              "predicted": 408,
+              "tp": 1,
+              "precision": 0.0024509803921568627,
+              "recall": 0.3333333333333333,
+              "f1": 0.004866180048661801
+            },
+            "C": {
+              "support": 7,
+              "predicted": 212,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            },
+            "D": {
+              "support": 694,
+              "predicted": 56,
+              "tp": 54,
+              "precision": 0.9642857142857143,
+              "recall": 0.07780979827089338,
+              "f1": 0.144
+            }
+          },
+          "balancedRecall": 0.1370477105347422,
+          "highRiskCount": 3,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 640,
+          "adjacentErrors": 221,
+          "reviewCount": 488
+        },
+        "招远项目": {
+          "n": 85,
+          "agreement": 0.15294117647058825,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 3,
+              "B": 59,
+              "C": 13,
+              "D": 5
+            },
+            "D": {
+              "A": 2,
+              "B": 1,
+              "C": 2,
+              "D": 0
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 5,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 0,
+              "predicted": 60,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "C": {
+              "support": 80,
+              "predicted": 15,
+              "tp": 13,
+              "precision": 0.8666666666666667,
+              "recall": 0.1625,
+              "f1": 0.2736842105263158
+            },
+            "D": {
+              "support": 5,
+              "predicted": 5,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            }
+          },
+          "balancedRecall": 0.08125,
+          "highRiskCount": 0,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 5,
+          "adjacentErrors": 66,
+          "reviewCount": 55
+        },
+        "三澳项目": {
+          "n": 332,
+          "agreement": 0.030120481927710843,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 6,
+              "B": 4,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 3,
+              "B": 4,
+              "C": 0,
+              "D": 0
+            },
+            "D": {
+              "A": 39,
+              "B": 207,
+              "C": 63,
+              "D": 6
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 48,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 10,
+              "predicted": 215,
+              "tp": 4,
+              "precision": 0.018604651162790697,
+              "recall": 0.4,
+              "f1": 0.035555555555555556
+            },
+            "C": {
+              "support": 7,
+              "predicted": 63,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            },
+            "D": {
+              "support": 315,
+              "predicted": 6,
+              "tp": 6,
+              "precision": 1,
+              "recall": 0.01904761904761905,
+              "f1": 0.037383177570093455
+            }
+          },
+          "balancedRecall": 0.13968253968253969,
+          "highRiskCount": 10,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 309,
+          "adjacentErrors": 73,
+          "reviewCount": 203
+        },
+        "防城港项目": {
+          "n": 203,
+          "agreement": 0.31527093596059114,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 2,
+              "B": 1,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 15,
+              "B": 112,
+              "C": 63,
+              "D": 9
+            },
+            "D": {
+              "A": 0,
+              "B": 0,
+              "C": 1,
+              "D": 0
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 17,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 3,
+              "predicted": 113,
+              "tp": 1,
+              "precision": 0.008849557522123894,
+              "recall": 0.3333333333333333,
+              "f1": 0.017241379310344827
+            },
+            "C": {
+              "support": 199,
+              "predicted": 64,
+              "tp": 63,
+              "precision": 0.984375,
+              "recall": 0.3165829145728643,
+              "f1": 0.4790874524714829
+            },
+            "D": {
+              "support": 1,
+              "predicted": 9,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            }
+          },
+          "balancedRecall": 0.21663874930206586,
+          "highRiskCount": 3,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 1,
+          "adjacentErrors": 124,
+          "reviewCount": 136
+        },
+        "在退役-防城港": {
+          "n": 20,
+          "agreement": 0.05,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 8,
+              "C": 1,
+              "D": 0
+            },
+            "D": {
+              "A": 1,
+              "B": 6,
+              "C": 4,
+              "D": 0
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 1,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 0,
+              "predicted": 14,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "C": {
+              "support": 9,
+              "predicted": 5,
+              "tp": 1,
+              "precision": 0.2,
+              "recall": 0.1111111111111111,
+              "f1": 0.14285714285714285
+            },
+            "D": {
+              "support": 11,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": 0,
+              "f1": 0
+            }
+          },
+          "balancedRecall": 0.05555555555555555,
+          "highRiskCount": 0,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 11,
+          "adjacentErrors": 12,
+          "reviewCount": 3
+        }
+      }
+    },
+    "after": {
+      "attempted": 920,
+      "missing": 2080,
+      "invalid": 25,
+      "errorRecords": 0,
+      "calls": 184,
+      "inputTokens": 933905,
+      "outputTokens": 1576860,
+      "operational": {
+        "n": 920,
+        "agreement": 0.4423913043478261,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 0,
+            "B": 5,
+            "C": 0,
+            "D": 1
+          },
+          "C": {
+            "A": 1,
+            "B": 10,
+            "C": 89,
+            "D": 41
+          },
+          "D": {
+            "A": 6,
+            "B": 37,
+            "C": 417,
+            "D": 313
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 7,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 6,
+            "predicted": 52,
+            "tp": 5,
+            "precision": 0.09615384615384616,
+            "recall": 0.8333333333333334,
+            "f1": 0.1724137931034483
+          },
+          "C": {
+            "support": 141,
+            "predicted": 506,
+            "tp": 89,
+            "precision": 0.17588932806324112,
+            "recall": 0.6312056737588653,
+            "f1": 0.2751159196290572
+          },
+          "D": {
+            "support": 773,
+            "predicted": 355,
+            "tp": 313,
+            "precision": 0.8816901408450705,
+            "recall": 0.4049159120310479,
+            "f1": 0.5549645390070922
+          }
+        },
+        "balancedRecall": 0.6231516397077489,
+        "highRiskCount": 6,
+        "highRiskUnderestimated": 1,
+        "lowRiskOvergraded": 460,
+        "adjacentErrors": 468,
+        "reviewCount": 915
+      },
+      "validOnly": {
+        "n": 895,
+        "agreement": 0.45251396648044695,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 0,
+            "B": 5,
+            "C": 0,
+            "D": 1
+          },
+          "C": {
+            "A": 1,
+            "B": 10,
+            "C": 87,
+            "D": 41
+          },
+          "D": {
+            "A": 6,
+            "B": 37,
+            "C": 394,
+            "D": 313
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 7,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 6,
+            "predicted": 52,
+            "tp": 5,
+            "precision": 0.09615384615384616,
+            "recall": 0.8333333333333334,
+            "f1": 0.1724137931034483
+          },
+          "C": {
+            "support": 139,
+            "predicted": 481,
+            "tp": 87,
+            "precision": 0.18087318087318088,
+            "recall": 0.6258992805755396,
+            "f1": 0.2806451612903226
+          },
+          "D": {
+            "support": 750,
+            "predicted": 355,
+            "tp": 313,
+            "precision": 0.8816901408450705,
+            "recall": 0.41733333333333333,
+            "f1": 0.5665158371040724
+          }
+        },
+        "balancedRecall": 0.6255219824140688,
+        "highRiskCount": 6,
+        "highRiskUnderestimated": 1,
+        "lowRiskOvergraded": 437,
+        "adjacentErrors": 445,
+        "reviewCount": 890
+      },
+      "groupedDevelopment": {
+        "n": 743,
+        "agreement": 0.44414535666218036,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 0,
+            "B": 4,
+            "C": 0,
+            "D": 1
+          },
+          "C": {
+            "A": 0,
+            "B": 9,
+            "C": 71,
+            "D": 36
+          },
+          "D": {
+            "A": 6,
+            "B": 27,
+            "C": 334,
+            "D": 255
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 6,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 5,
+            "predicted": 40,
+            "tp": 4,
+            "precision": 0.1,
+            "recall": 0.8,
+            "f1": 0.17777777777777778
+          },
+          "C": {
+            "support": 116,
+            "predicted": 405,
+            "tp": 71,
+            "precision": 0.17530864197530865,
+            "recall": 0.6120689655172413,
+            "f1": 0.272552783109405
+          },
+          "D": {
+            "support": 622,
+            "predicted": 292,
+            "tp": 255,
+            "precision": 0.8732876712328768,
+            "recall": 0.409967845659164,
+            "f1": 0.5579868708971554
+          }
+        },
+        "balancedRecall": 0.6073456037254684,
+        "highRiskCount": 5,
+        "highRiskUnderestimated": 1,
+        "lowRiskOvergraded": 367,
+        "adjacentErrors": 379,
+        "reviewCount": 738
+      },
+      "groupedHoldout": {
+        "n": 152,
+        "agreement": 0.4934210526315789,
+        "matrix": {
+          "A": {
+            "A": 0,
+            "B": 0,
+            "C": 0,
+            "D": 0
+          },
+          "B": {
+            "A": 0,
+            "B": 1,
+            "C": 0,
+            "D": 0
+          },
+          "C": {
+            "A": 1,
+            "B": 1,
+            "C": 16,
+            "D": 5
+          },
+          "D": {
+            "A": 0,
+            "B": 10,
+            "C": 60,
+            "D": 58
+          }
+        },
+        "perGrade": {
+          "A": {
+            "support": 0,
+            "predicted": 1,
+            "tp": 0,
+            "precision": 0,
+            "recall": null,
+            "f1": 0
+          },
+          "B": {
+            "support": 1,
+            "predicted": 12,
+            "tp": 1,
+            "precision": 0.08333333333333333,
+            "recall": 1,
+            "f1": 0.15384615384615385
+          },
+          "C": {
+            "support": 23,
+            "predicted": 76,
+            "tp": 16,
+            "precision": 0.21052631578947367,
+            "recall": 0.6956521739130435,
+            "f1": 0.32323232323232326
+          },
+          "D": {
+            "support": 128,
+            "predicted": 63,
+            "tp": 58,
+            "precision": 0.9206349206349206,
+            "recall": 0.453125,
+            "f1": 0.6073298429319371
+          }
+        },
+        "balancedRecall": 0.7162590579710145,
+        "highRiskCount": 1,
+        "highRiskUnderestimated": 0,
+        "lowRiskOvergraded": 70,
+        "adjacentErrors": 66,
+        "reviewCount": 152
+      },
+      "projects": {
+        "宁德项目": {
+          "n": 327,
+          "agreement": 0.47706422018348627,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 1,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 3,
+              "C": 16,
+              "D": 5
+            },
+            "D": {
+              "A": 0,
+              "B": 9,
+              "C": 154,
+              "D": 139
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "B": {
+              "support": 1,
+              "predicted": 13,
+              "tp": 1,
+              "precision": 0.07692307692307693,
+              "recall": 1,
+              "f1": 0.14285714285714285
+            },
+            "C": {
+              "support": 24,
+              "predicted": 170,
+              "tp": 16,
+              "precision": 0.09411764705882353,
+              "recall": 0.6666666666666666,
+              "f1": 0.16494845360824742
+            },
+            "D": {
+              "support": 302,
+              "predicted": 144,
+              "tp": 139,
+              "precision": 0.9652777777777778,
+              "recall": 0.4602649006622517,
+              "f1": 0.6233183856502242
+            }
+          },
+          "balancedRecall": 0.7089771891096394,
+          "highRiskCount": 1,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 163,
+          "adjacentErrors": 162,
+          "reviewCount": 325
+        },
+        "陆丰项目": {
+          "n": 322,
+          "agreement": 0.4254658385093168,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 1
+            },
+            "C": {
+              "A": 0,
+              "B": 0,
+              "C": 2,
+              "D": 1
+            },
+            "D": {
+              "A": 1,
+              "B": 11,
+              "C": 171,
+              "D": 135
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 1,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 1,
+              "predicted": 11,
+              "tp": 0,
+              "precision": 0,
+              "recall": 0,
+              "f1": 0
+            },
+            "C": {
+              "support": 3,
+              "predicted": 173,
+              "tp": 2,
+              "precision": 0.011560693641618497,
+              "recall": 0.6666666666666666,
+              "f1": 0.022727272727272728
+            },
+            "D": {
+              "support": 318,
+              "predicted": 137,
+              "tp": 135,
+              "precision": 0.9854014598540146,
+              "recall": 0.42452830188679247,
+              "f1": 0.5934065934065934
+            }
+          },
+          "balancedRecall": 0.36373165618448633,
+          "highRiskCount": 1,
+          "highRiskUnderestimated": 1,
+          "lowRiskOvergraded": 183,
+          "adjacentErrors": 172,
+          "reviewCount": 321
+        },
+        "招远项目": {
+          "n": 21,
+          "agreement": 0.6190476190476191,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 0,
+              "C": 13,
+              "D": 8
+            },
+            "D": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "B": {
+              "support": 0,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "C": {
+              "support": 21,
+              "predicted": 13,
+              "tp": 13,
+              "precision": 1,
+              "recall": 0.6190476190476191,
+              "f1": 0.7647058823529411
+            },
+            "D": {
+              "support": 0,
+              "predicted": 8,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            }
+          },
+          "balancedRecall": 0.6190476190476191,
+          "highRiskCount": 0,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 0,
+          "adjacentErrors": 8,
+          "reviewCount": 20
+        },
+        "三澳项目": {
+          "n": 133,
+          "agreement": 0.3233082706766917,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 4,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 0,
+              "C": 1,
+              "D": 0
+            },
+            "D": {
+              "A": 5,
+              "B": 17,
+              "C": 68,
+              "D": 38
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 5,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 4,
+              "predicted": 21,
+              "tp": 4,
+              "precision": 0.19047619047619047,
+              "recall": 1,
+              "f1": 0.32
+            },
+            "C": {
+              "support": 1,
+              "predicted": 69,
+              "tp": 1,
+              "precision": 0.014492753623188406,
+              "recall": 1,
+              "f1": 0.02857142857142857
+            },
+            "D": {
+              "support": 128,
+              "predicted": 38,
+              "tp": 38,
+              "precision": 1,
+              "recall": 0.296875,
+              "f1": 0.4578313253012048
+            }
+          },
+          "balancedRecall": 0.765625,
+          "highRiskCount": 4,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 90,
+          "adjacentErrors": 68,
+          "reviewCount": 133
+        },
+        "防城港项目": {
+          "n": 82,
+          "agreement": 0.6097560975609756,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 1,
+              "B": 7,
+              "C": 50,
+              "D": 24
+            },
+            "D": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 1,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "B": {
+              "support": 0,
+              "predicted": 7,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            },
+            "C": {
+              "support": 82,
+              "predicted": 50,
+              "tp": 50,
+              "precision": 1,
+              "recall": 0.6097560975609756,
+              "f1": 0.7575757575757576
+            },
+            "D": {
+              "support": 0,
+              "predicted": 24,
+              "tp": 0,
+              "precision": 0,
+              "recall": null,
+              "f1": 0
+            }
+          },
+          "balancedRecall": 0.6097560975609756,
+          "highRiskCount": 0,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 0,
+          "adjacentErrors": 31,
+          "reviewCount": 81
+        },
+        "在退役-防城港": {
+          "n": 10,
+          "agreement": 0.6,
+          "matrix": {
+            "A": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "B": {
+              "A": 0,
+              "B": 0,
+              "C": 0,
+              "D": 0
+            },
+            "C": {
+              "A": 0,
+              "B": 0,
+              "C": 5,
+              "D": 3
+            },
+            "D": {
+              "A": 0,
+              "B": 0,
+              "C": 1,
+              "D": 1
+            }
+          },
+          "perGrade": {
+            "A": {
+              "support": 0,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "B": {
+              "support": 0,
+              "predicted": 0,
+              "tp": 0,
+              "precision": null,
+              "recall": null,
+              "f1": null
+            },
+            "C": {
+              "support": 8,
+              "predicted": 6,
+              "tp": 5,
+              "precision": 0.8333333333333334,
+              "recall": 0.625,
+              "f1": 0.7142857142857143
+            },
+            "D": {
+              "support": 2,
+              "predicted": 4,
+              "tp": 1,
+              "precision": 0.25,
+              "recall": 0.5,
+              "f1": 0.3333333333333333
+            }
+          },
+          "balancedRecall": 0.5625,
+          "highRiskCount": 0,
+          "highRiskUnderestimated": 0,
+          "lowRiskOvergraded": 1,
+          "adjacentErrors": 4,
+          "reviewCount": 10
+        }
+      }
+    }
+  },
+  "paired": {
+    "before": {
+      "n": 810,
+      "agreement": 0.12222222222222222,
+      "matrix": {
+        "A": {
+          "A": 0,
+          "B": 0,
+          "C": 0,
+          "D": 0
+        },
+        "B": {
+          "A": 3,
+          "B": 2,
+          "C": 0,
+          "D": 0
+        },
+        "C": {
+          "A": 10,
+          "B": 86,
+          "C": 32,
+          "D": 9
+        },
+        "D": {
+          "A": 38,
+          "B": 368,
+          "C": 197,
+          "D": 65
+        }
+      },
+      "perGrade": {
+        "A": {
+          "support": 0,
+          "predicted": 51,
+          "tp": 0,
+          "precision": 0,
+          "recall": null,
+          "f1": 0
+        },
+        "B": {
+          "support": 5,
+          "predicted": 456,
+          "tp": 2,
+          "precision": 0.0043859649122807015,
+          "recall": 0.4,
+          "f1": 0.008676789587852495
+        },
+        "C": {
+          "support": 137,
+          "predicted": 229,
+          "tp": 32,
+          "precision": 0.13973799126637554,
+          "recall": 0.23357664233576642,
+          "f1": 0.17486338797814208
+        },
+        "D": {
+          "support": 668,
+          "predicted": 74,
+          "tp": 65,
+          "precision": 0.8783783783783784,
+          "recall": 0.09730538922155689,
+          "f1": 0.1752021563342318
+        }
+      },
+      "balancedRecall": 0.24362734385244111,
+      "highRiskCount": 5,
+      "highRiskUnderestimated": 0,
+      "lowRiskOvergraded": 603,
+      "adjacentErrors": 295,
+      "reviewCount": 583
+    },
+    "after": {
+      "n": 810,
+      "agreement": 0.445679012345679,
+      "matrix": {
+        "A": {
+          "A": 0,
+          "B": 0,
+          "C": 0,
+          "D": 0
+        },
+        "B": {
+          "A": 0,
+          "B": 4,
+          "C": 0,
+          "D": 1
+        },
+        "C": {
+          "A": 1,
+          "B": 10,
+          "C": 85,
+          "D": 41
+        },
+        "D": {
+          "A": 5,
+          "B": 31,
+          "C": 360,
+          "D": 272
+        }
+      },
+      "perGrade": {
+        "A": {
+          "support": 0,
+          "predicted": 6,
+          "tp": 0,
+          "precision": 0,
+          "recall": null,
+          "f1": 0
+        },
+        "B": {
+          "support": 5,
+          "predicted": 45,
+          "tp": 4,
+          "precision": 0.08888888888888889,
+          "recall": 0.8,
+          "f1": 0.16
+        },
+        "C": {
+          "support": 137,
+          "predicted": 445,
+          "tp": 85,
+          "precision": 0.19101123595505617,
+          "recall": 0.6204379562043796,
+          "f1": 0.2920962199312715
+        },
+        "D": {
+          "support": 668,
+          "predicted": 314,
+          "tp": 272,
+          "precision": 0.8662420382165605,
+          "recall": 0.40718562874251496,
+          "f1": 0.5539714867617108
+        }
+      },
+      "balancedRecall": 0.6092078616489648,
+      "highRiskCount": 5,
+      "highRiskUnderestimated": 1,
+      "lowRiskOvergraded": 396,
+      "adjacentErrors": 411,
+      "reviewCount": 805
+    }
+  },
+  "majorityBaseline": 0.844
+}

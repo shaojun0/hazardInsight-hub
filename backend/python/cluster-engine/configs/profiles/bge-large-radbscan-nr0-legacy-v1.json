@@ -1,0 +1,23 @@
+{
+  "profile_id": "bge-large-radbscan-nr0-legacy-v1",
+  "algorithm": "radbscan",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "eps": 0.5345077994575912,
+    "min_pts": 14
+  },
+  "features": {
+    "beta": 1.0,
+    "n_results": 0,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-radbscan-v1"
+  },
+  "knowledge_base_id": null,
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/RADBSCANOptimizer_0_0_best_param.json",
+  "source_sha256": "419bd7c0b2f7d49fc2f1fb755f081bfbe00a4328d4278c5f9aa1ab7f683eb58b",
+  "max_samples": 500
+}

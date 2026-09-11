@@ -1,0 +1,24 @@
+{
+  "profile_id": "bge-large-chinese-whispers-nr1-legacy-v1",
+  "algorithm": "chinese_whispers",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "n_neighbors": 38,
+    "weighting": "lin",
+    "iterations": 20
+  },
+  "features": {
+    "beta": 0.8598318703774629,
+    "n_results": 1,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy_with_known_issues",
+  "source_result": "output_bge_large/ChineseWhispersOptimizer_-1_0_best_param.json",
+  "source_sha256": "dec4e7dd5beedf382023601104cc7bde4860536c445d89784e3cc271a9ba35d8",
+  "max_samples": 500
+}

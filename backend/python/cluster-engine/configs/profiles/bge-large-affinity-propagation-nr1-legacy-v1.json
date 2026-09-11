@@ -1,0 +1,23 @@
+{
+  "profile_id": "bge-large-affinity-propagation-nr1-legacy-v1",
+  "algorithm": "affinity_propagation",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "damping": 0.9280621163990723,
+    "preference": -7.375337075503312
+  },
+  "features": {
+    "beta": 0.3587145931732785,
+    "n_results": 4,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/AffinityPropagationOptimizer_-1_0_best_param.json",
+  "source_sha256": "796dcf639b0e9fd947c417aca1ca8dd65d24bb1ac5444232d779aa58477b6f16",
+  "max_samples": 500
+}

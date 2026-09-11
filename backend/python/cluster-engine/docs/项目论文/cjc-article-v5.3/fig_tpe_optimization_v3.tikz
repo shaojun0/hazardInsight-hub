@@ -1,0 +1,113 @@
+% =====================================================================
+% 图3：以少量标注引导的超参数选择流程（与 rend_tpe_optimization.drawio 逐点对齐）
+% 左面板：离线 · 标注生成（便签"文本" + 叉号 + 圆形"规则" → 聚类 → LLM → ✓ → 标注数据）
+% 右面板：在线 · TPE 搜索（Θ 六边形 → 采样 → 迭代验证 → ✓ → Θ*）
+% 灰色虚线箭头：标注数据 → 迭代验证（标注数据子集为 TPE 迭代验证提供标签）
+% ---------------------------------------------------------------------
+% 对齐方式：drawio 画布 1000x680 px 按 0.647 缩放并平移 (-90.6, -5.2)，
+%   即 T(x,y) = (0.647*x - 90.6, 0.647*y - 5.2)，坐标系 y 向下，
+%   所有形状的路径均按 drawio 的 shape 源码（mxCloud / HexagonShape /
+%   NoteShape / CrossShape / CylinderShape3）逐点还原，非几何近似：
+%   - 云朵：mxCloud 的 6 段三次贝塞尔（cubic Bézier）；
+%   - 六边形：HexagonShape，s = w * size(=0.18)，平顶 + 尖侧；
+%   - 便签：NoteShape，右上角折角（size=14）；
+%   - 叉号：CrossShape，直角"+"（size=0.252）；
+%   - 圆柱：CylinderShape3，盖顶椭圆弧 + 前缘弧（size=15），统一填色；
+%   - 箭头端点/折点均与 drawio 的 sourcePoint/targetPoint 一致。
+% 论文中经 \resizebox{\linewidth}{!}{\input{fig_tpe_optimization_v3.tikz}} 缩放至单栏宽。
+% =====================================================================
+% 颜色风格：向图1（fig_spear_framework_v2.tikz）看齐 —— 浅色容器 + 彩色细描边 +
+%   深色墨字 + 细 -latex 箭头。
+%   v6 配色：左面板=图1阶段1"语义净化"紫色系；右面板=图1阶段3"凝聚层次聚类"
+%     橙色系（柔和琥珀 faOrange，不用深橙 faOrangeDk）；Θ* 为浅橙卡片 + 墨字，
+%     避免与左侧圆柱形成强反差。
+%   v8：几何完全恢复 drawio 原始框体尺寸（v7 的收紧作废，保留原版比例
+%     与艺术美感），仅保留 v7 的字号放大 —— 框内 \large、标签 \normalsize、
+%     六边形/Θ* \Large。
+%   v9：两个最外层面板（fc-panel-pur / fc-panel-ora）边框线宽 0.6 → 1.3（加粗）。
+%   色板 RGB 值取自图1的 fa* 色板，此处以 fc* 前缀命名，保持文件自包含。
+% ---------- 调色板（RGB 值 = 图1 fa* 色板对应色） ---------- %
+\definecolor{fcPurple}{RGB}{124,58,237}%      % = faPurple
+\definecolor{fcPurpleLt}{RGB}{139,92,246}%    % = faPurpleLt
+\definecolor{fcInkPurple}{RGB}{91,33,182}%    % = faInkPurple
+\definecolor{fcOrange}{RGB}{245,158,11}%      % = faOrange（琥珀，柔和）
+\definecolor{fcInkOrange}{RGB}{194,65,12}%    % = faInkOrange
+\definecolor{fcSlate}{RGB}{100,116,139}%      % = faSlate
+\definecolor{fcGray}{RGB}{148,163,184}%       % = faGray
+% ---------- 样式（对齐图1：浅色容器 + 彩色描边 + 细线宽） ---------- %
+\tikzset{%
+  fc-panel-pur/.style={shape=rectangle, draw={rgb,255: red,233; green,213; blue,255}, fill={rgb,255: red,250; green,245; blue,255}, line width=1.3, rounded corners=4, inner sep=0},%
+  fc-panel-ora/.style={shape=rectangle, draw={rgb,255: red,254; green,215; blue,170}, fill={rgb,255: red,255; green,247; blue,237}, line width=1.3, rounded corners=4, inner sep=0},%
+  fc-head/.style={shape=rectangle, draw=none, fill=none, font=\large\bfseries, anchor=west, inner sep=1},%
+  fc-title/.style={shape=rectangle, draw=none, fill=none, font=\fontsize{18}{20}\selectfont\bfseries, text=fcSlate, inner sep=1},%
+  fc-box/.style={shape=rectangle, line width=0.65, rounded corners=2, inner sep=2, font=\large\bfseries, align=center},%
+  fc-box-pur/.style={fc-box, fill={rgb,255: red,245; green,243; blue,255}, draw=fcPurpleLt, text=fcInkPurple},%
+  fc-box-oral/.style={fc-box, fill={rgb,255: red,255; green,237; blue,213}, draw=fcOrange, text=fcInkOrange},%
+  fc-box-orares/.style={shape=rectangle, line width=0.9, rounded corners=6, inner sep=2, align=center, fill={rgb,255: red,255; green,237; blue,213}, draw=fcOrange, text=fcInkOrange},%
+  fc-check-pur/.style={shape=ellipse, line width=0.6, fill=fcPurpleLt, draw=fcInkPurple, font=\Large, text=white, inner sep=1},%
+  fc-check-ora/.style={shape=ellipse, line width=0.6, fill=fcOrange, draw=fcInkOrange, font=\Large, text=white, inner sep=1},%
+  fc-cloud-pur/.style={draw=fcPurpleLt, fill={rgb,255: red,245; green,243; blue,255}, line width=0.8},%
+  fc-cloud-ora/.style={draw=fcOrange, fill={rgb,255: red,255; green,237; blue,213}, line width=0.8},%
+  fc-txt-cloud/.style={shape=rectangle, draw=none, fill=none, font=\normalsize\bfseries, inner sep=1},%
+  fc-txt-pur/.style={shape=rectangle, draw=none, fill=none, font=\normalsize\bfseries, text=fcInkPurple, inner sep=1},%
+  fc-txt-hex/.style={shape=rectangle, draw=none, fill=none, font=\Large\bfseries, text=fcInkOrange, inner sep=1},%
+  fc-note/.style={draw=fcPurpleLt, fill={rgb,255: red,245; green,243; blue,255}, line width=0.8},%
+  fc-cross/.style={draw=fcPurpleLt, fill={rgb,255: red,245; green,243; blue,255}, line width=0.8},%
+  fc-cyl/.style={draw=fcPurpleLt, fill={rgb,255: red,245; green,243; blue,255}, line width=0.8},%
+  fc-hex/.style={draw=fcOrange, fill={rgb,255: red,255; green,237; blue,213}, line width=0.8},%
+  fc-edge-pur/.style={draw=fcPurple, ->, -latex, line width=0.8},%
+  fc-edge-ora/.style={draw=fcOrange, ->, -latex, line width=0.8},%
+  fc-edge-oradk/.style={draw=fcInkOrange, ->, -latex, line width=0.9},%
+  fc-edge-dash/.style={draw=fcSlate, ->, -latex, line width=0.7, dash pattern={on 3pt off 2.5pt}},%
+  fc-sub/.style={shape=rectangle, draw=none, fill=none, font=\scriptsize, text=fcGray, inner sep=1, anchor=west},%
+}%
+\begin{tikzpicture}[x=1pt, y=1pt, yscale=-1]%
+  % ---------- 面板容器（drawio zL_bg / zR_bg）----------
+  \node [fc-panel-pur, minimum width=219.98, minimum height=302.8] at (109.99, 179.87) {};%
+  \node [fc-panel-ora,  minimum width=208.33, minimum height=302.8] at (335.79, 179.87) {};%
+  % ---------- 标题与面板标题 ----------
+  \node [fc-title] at (226.45, 9.7) {REND · 超参数优化};%
+  \node [fc-head, text=fcInkPurple] at (7.76, 38.1) {离线 · 标注生成};%
+  \node [fc-head, text=fcInkOrange] at (241.98, 38.1) {在线 · TPE 搜索};%
+  % ---------- 左面板：输入组（便签"文本" + 叉号 + 圆形"规则"）----------
+  % 便签 NoteShape：右上角折角，折线 (94.44,62.09)-(94.44,71.15)-(103.50,71.15)
+  \path [fc-note] (38.80, 62.09) -- (94.44, 62.09) -- (103.50, 71.15) -- (103.50, 93.14) -- (38.80, 93.14) -- cycle;%
+  \path [draw=fcPurpleLt, line width=0.8] (94.44, 62.09) -- (94.44, 71.15) -- (103.50, 71.15);%
+  \node [fc-txt-pur] at (71.15, 77.62) {文本};%
+  % 叉号 CrossShape：直角"+"，臂厚 = 0.252 * min(w,h)
+  \path [fc-cross] (109.97, 74.68) -- (119.98, 74.68) -- (119.98, 65.97) -- (125.85, 65.97) -- (125.85, 74.68) -- (135.85, 74.68) -- (135.85, 80.55) -- (125.85, 80.55) -- (125.85, 89.26) -- (119.98, 89.26) -- (119.98, 80.55) -- (109.97, 80.55) -- cycle;%
+  \node [shape=ellipse, line width=0.8, fill={rgb,255: red,245; green,243; blue,255}, draw=fcPurpleLt, minimum width=36.23, minimum height=36.23, inner sep=1] at (160.44, 77.62) {};%
+  \node [fc-txt-pur] at (160.44, 77.62) {规则};%
+  % ---------- 左面板：竖向链 聚类 → LLM → ✓ → 标注数据 ----------
+  \node [fc-box-pur, minimum width=141.05, minimum height=25.88] at (109.32, 125.49) {聚类};%
+  \draw [fc-edge-pur] (109.32, 138.44) -- (109.32, 154.61);%
+  % 云朵 mxCloud：6 段三次贝塞尔（与 drawio L3 逐点一致，尺寸 184x56）
+  \path [fc-cloud-pur] (79.56, 163.67) .. controls (55.75, 163.67) and (49.80, 172.73) .. (68.85, 174.54) .. controls (49.80, 178.52) and (71.23, 187.22) .. (86.70, 183.60) .. controls (97.42, 190.84) and (133.13, 190.84) .. (145.04, 183.60) .. controls (168.85, 183.60) and (168.85, 176.35) .. (153.97, 172.73) .. controls (168.85, 165.48) and (145.04, 158.23) .. (124.20, 161.86) .. controls (109.32, 156.42) and (85.51, 156.42) .. (79.56, 163.67) -- cycle;%
+  \node [fc-txt-cloud, text=fcInkPurple] at (109.32, 172.73) {LLM};%
+  \draw [fc-edge-pur] (109.32, 190.84) -- (108.35, 212.22);%
+  \node [fc-check-pur, minimum width=42.06, minimum height=33.64] at (108.35, 229.00) {$\checkmark$};%
+  \draw [fc-edge-pur] (108.35, 245.84) -- (108.19, 267.83);%
+  % 圆柱 CylinderShape3：size=15，盖顶弧 + 前缘弧，统一填色
+  % （圆弧用三次贝塞尔精确逼近，避免 arc 在 yscale=-1 下的偏移；κ=0.5523）
+  \path [fc-cyl] (49.80, 277.54) .. controls (49.80, 272.18) and (75.94, 267.83) .. (108.19, 267.83) .. controls (140.44, 267.83) and (166.58, 272.18) .. (166.58, 277.54) -- (166.58, 298.24) .. controls (166.58, 303.60) and (140.44, 307.95) .. (108.19, 307.95) .. controls (75.94, 307.95) and (49.80, 303.60) .. (49.80, 298.24) -- cycle;%
+  \path [draw=fcInkPurple, line width=0.8] (166.58, 277.54) .. controls (166.58, 282.90) and (140.44, 287.24) .. (108.19, 287.24) .. controls (75.94, 287.24) and (49.80, 282.90) .. (49.80, 277.54);%
+  \node [shape=rectangle, draw=none, fill=none, font=\normalsize\bfseries, text=fcInkPurple, inner sep=1] at (108.19, 295.89) {标注数据};%
+  % ---------- 右面板：竖向链 Θ → 采样 → 迭代验证 → ✓ → Θ* ----------
+  % 六边形 HexagonShape：s = w * size(0.18)，平顶 + 尖侧
+  \path [fc-hex] (300.06, 59.50) -- (366.31, 59.50) -- (384.95, 75.03) -- (366.31, 90.56) -- (300.06, 90.56) -- (281.43, 75.03) -- cycle;%
+  \node [fc-txt-hex] at (333.19, 75.03) {$\Theta$};%
+  \draw [fc-edge-ora] (333.19, 90.56) -- (333.19, 109.97);%
+  \node [fc-box-oral, minimum width=122.93, minimum height=23.29] at (333.19, 121.61) {采样};%
+  \draw [fc-edge-ora] (333.19, 133.28) -- (331.89, 156.55);%
+  % 云朵 mxCloud：与 drawio 迭代验证逐点一致（尺寸 184x56）
+  \path [fc-cloud-ora] (302.13, 165.61) .. controls (278.32, 165.61) and (272.37, 174.67) .. (291.42, 176.48) .. controls (272.37, 180.46) and (293.80, 187.22) .. (309.27, 185.54) .. controls (319.99, 190.78) and (355.70, 190.78) .. (367.61, 185.54) .. controls (391.42, 185.54) and (391.42, 178.29) .. (376.53, 174.67) .. controls (391.42, 167.42) and (367.61, 160.17) .. (346.77, 163.80) .. controls (331.89, 158.36) and (308.08, 158.36) .. (302.13, 165.61) -- cycle;%
+  \node [fc-txt-cloud, text=fcInkOrange] at (331.89, 174.67) {迭代验证};%
+  \draw [fc-edge-ora] (335.13, 188.25) -- (334.48, 209.60);%
+  \node [fc-check-ora, minimum width=42.06, minimum height=33.64] at (334.80, 225.09) {$\checkmark$};%
+  \draw [fc-edge-oradk] (334.80, 243.25) -- (334.80, 269.13);%
+  \path [fill={rgb,255: red,255; green,237; blue,213}, rounded corners=6] (285.63, 269.13) rectangle (383.97, 301.48);%
+  \node [fc-box-orares, minimum width=98.34, minimum height=32.35, font=\Large\bfseries] at (334.80, 285.31) {$\Theta^{*}$};%
+  % ---------- 标注数据 → 迭代验证（灰色虚线箭头，画在云朵之上）----------
+  \draw [fc-edge-dash] (166.58, 287.89) -- (226.43, 289.83) -- (226.43, 176.61) -- (278.84, 176.61);%
+  % \node [fc-sub] at (234, 230) {标注};%
+\end{tikzpicture}%

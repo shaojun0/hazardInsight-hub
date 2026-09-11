@@ -1,0 +1,24 @@
+{
+  "profile_id": "bge-large-canopy-nr1-legacy-v1",
+  "algorithm": "canopy",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "t2": 0.5407977735194086,
+    "t1": 1.1488761935158294,
+    "metric": "l2"
+  },
+  "features": {
+    "beta": 0.02836710225865497,
+    "n_results": 6,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/CanopyOptimizer_-1_0_best_param.json",
+  "source_sha256": "772473466baf7c7be8fb6f46183f267ebd90680e3aa5b88210456ef817a2aafe",
+  "max_samples": 500
+}

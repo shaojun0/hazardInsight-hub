@@ -1,0 +1,37 @@
+# ============================================================
+# HazardInsight Hub — 聚类分析服务（backend/python）
+#
+# 安装：
+#   cd backend/python
+#   python -m venv .venv
+#   .venv\Scripts\activate            # Windows
+#   source .venv/bin/activate         # Linux / macOS
+#   pip install -r requirements.txt
+#
+# 说明：
+#   * cluster-engine 是可复用的聚类引擎（算法 / 向量化 / 特征 / 检索），
+#     以可编辑方式安装，其自身依赖通过 extra 引入：
+#       api        fastapi / uvicorn
+#       local      sentence-transformers / torch / transformers（默认本地模型路径）
+#       retrieval  chromadb（仅 nr1 检索增强 profile 需要）
+#       algorithms hdbscan / chinese-whispers / networkx（全部聚类算法）
+#   * 若只想跑通 nr0（纯向量）profile 且环境无法安装 torch，
+#     可改用：pip install -e "./cluster-engine[api,algorithms]" 并设置
+#     HAZARD_... 无关；此时 `/api/clustering/profiles` 会把这些 profile 标为不可用。
+# ============================================================
+
+-e ./cluster-engine[api,local,retrieval,algorithms]
+
+# 网关自身依赖
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+python-multipart>=0.0.9
+
+# 中文关键词抽取（展示辅助；缺失时自动退化为字符 n-gram）
+jieba>=0.42.1
+
+# 测试
+pytest>=8.0.0
+httpx>=0.27.0

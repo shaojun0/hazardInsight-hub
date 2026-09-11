@@ -1,0 +1,24 @@
+{
+  "profile_id": "bge-large-hdbscan-nr1-legacy-v1",
+  "algorithm": "hdbscan",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "min_cluster_size": 5,
+    "cluster_selection_epsilon": 1.1964119109138434,
+    "alpha": 0.3062463118676477
+  },
+  "features": {
+    "beta": 0.44397442974782997,
+    "n_results": 5,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": "bge-large-raw-lines-v1",
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/HDBSCANOptimizer_-1_0_best_param.json",
+  "source_sha256": "3d39c8c7ae111898e2522f518d95eca01a10e024a9a0718f07f7f58f2824c05d",
+  "max_samples": 500
+}

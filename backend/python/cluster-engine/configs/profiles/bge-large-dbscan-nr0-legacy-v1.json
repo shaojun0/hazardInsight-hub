@@ -1,0 +1,24 @@
+{
+  "profile_id": "bge-large-dbscan-nr0-legacy-v1",
+  "algorithm": "dbscan",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "eps": 0.5145134241973134,
+    "min_samples": 5,
+    "leaf_size": 10
+  },
+  "features": {
+    "beta": 0.36756193970546625,
+    "n_results": 0,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": null,
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/DBSCANOptimizer_0_0_best_param.json",
+  "source_sha256": "7750fd4b272ac262eb180baed307ca80c92c47a0e616e63d274063aa8ba0c953",
+  "max_samples": 500
+}

@@ -1,0 +1,23 @@
+{
+  "profile_id": "bge-large-birch-nr0-legacy-v1",
+  "algorithm": "birch",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "threshold": 0.603003309261442,
+    "branching_factor": 105
+  },
+  "features": {
+    "beta": 1.0,
+    "n_results": 0,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": null,
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/BirchOptimizer_0_0_best_param.json",
+  "source_sha256": "a19cf968ae502173571298c30feb2a87d49f1b945bdd81ec49f443e3377bce9d",
+  "max_samples": 500
+}

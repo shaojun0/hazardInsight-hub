@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "retrain-cluster"
+version = "0.2.0"
+description = "Versioned retrieval-augmented clustering with legacy experiment compatibility"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["numpy>=1.24", "scikit-learn>=1.3", "optuna>=3.0", "tqdm>=4.65"]
+
+[project.optional-dependencies]
+remote = ["openai>=2.53.0"]
+retrieval = ["chromadb>=0.5"]
+local = ["sentence-transformers>=3.0", "torch", "transformers"]
+algorithms = ["hdbscan>=0.8", "chinese-whispers==0.9.0", "networkx"]
+umap = ["umap-learn"]
+analysis = ["matplotlib", "pandas", "scipy"]
+api = ["fastapi", "uvicorn"]
+
+[dependency-groups]
+dev = ["pytest", "httpx", "ruff"]
+
+[project.scripts]
+retrain-cluster = "retrain_cluster.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/retrain_cluster"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+include = ["src/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

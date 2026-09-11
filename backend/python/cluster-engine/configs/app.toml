@@ -1,0 +1,20 @@
+[app]
+models_file = "models.toml"
+profiles_dir = "profiles"
+artifacts_dir = "../artifacts"
+max_samples = 500
+max_text_length = 4000
+max_body_bytes = 2097152
+timeout_seconds = 60.0
+query_batch = 64
+host = "127.0.0.1"
+port = 8000
+
+[experiment]
+reference = "../data/reference.json"
+test = "../data/labels.json"
+knowledge_texts = "../data/database.txt"
+n_trials = 200
+n_jobs = 8
+seed = 42
+startup_trials = 15

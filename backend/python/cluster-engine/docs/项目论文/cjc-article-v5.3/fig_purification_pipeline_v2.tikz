@@ -1,0 +1,124 @@
+% ===================================================================== %
+% fig_purification_pipeline_v2.tikz                                      %
+% LLM 语义净化流程（fig:purification）：由 semantic-purification-pipeline.drawio 忠实转换 %
+% 三列布局：(a) 成分解构与向量化 | (b) 无关原型构建 + (c) 成分过滤 |       %
+%            (d) 成分移除与重构                                            %
+% 风格对齐论文图4（fig:exp_design）：浅色圆角容器 + 彩色描边 + -latex 箭头 + yscale=-1 %
+% 使用：\resizebox{\linewidth}{!}{\input{fig_purification_pipeline_v2.tikz}} %
+% 注意：tikzpicture 之外每一行均以 % 结尾，避免撑大测量盒子             %
+% --------------------------------------------------------------------- %
+% v2 重构（渲染应与原版逐像素一致）：                                    %
+%   A. 调色板抽出：内联 rgb,255: 值 → 顶部 \definecolor（RGB 与原值一一   %
+%      对应），按语义命名：fbInk 主文字 / fbSlate 次要文字 / fbLine 边框  %
+%      箭头 / fbBorder 面板描边 / fbXxx 浅色填充                          %
+%   B. 样式现代化：\tikzstyle → \tikzset；fb-box-* 七色合并为带参样式     %
+%      fb-box={填充色} + 同名单名样式别名；fb-edge / fb-edge-thick /      %
+%      fb-edge-dash 三式合并为 fb-edge={线宽} 与 fb-edge-dash={线宽}      %
+%   C. 同构节点 foreach：面板外框、标题芯片、(b) 四个红色类别块、纵向链边、%
+%      (b) 扇出边、(d) 链边（线宽随数据）、跨面板小字标注                 %
+%   D. 双行盒文本抽成宏 \fbTwoLine{标题}{说明}（9 处重复 → 1 处定义）；   %
+%      n301 为三行文本，保持手动展开以维持 \\ 位于顶层（不套多余花括号）  %
+% --------------------------------------------------------------------- %
+% 原文件备份为 fig_purification_pipeline_v2_orig.tikz                    %
+% ===================================================================== %
+% ---------- 调色板（RGB 值 = 原文件 rgb,255: 三原色值） ---------- %
+\definecolor{fbInk}{RGB}{23,32,51}%        % #172033 主文字（标题 / 盒内文字）
+\definecolor{fbSlate}{RGB}{91,100,117}%    % #5B6475 次要文字（原 fbGray）
+\definecolor{fbLine}{RGB}{100,116,139}%    % #64748B 盒边框 / 箭头
+\definecolor{fbBorder}{RGB}{148,163,184}%  % #94A3B8 面板 / 芯片描边
+\definecolor{fbBlue}{RGB}{191,219,254}%    % #BFDBFE 浅蓝填充
+\definecolor{fbIndigo}{RGB}{199,210,254}%  % #C7D2FE 浅靛填充
+\definecolor{fbGray}{RGB}{226,232,240}%    % #E2E8F0 浅灰填充
+\definecolor{fbPurple}{RGB}{216,180,254}%  % #D8B4FE 浅紫填充
+\definecolor{fbRed}{RGB}{254,202,202}%     % #FECACA 浅红填充
+\definecolor{fbYellow}{RGB}{253,230,138}%  % #FDE68A 浅黄填充
+\definecolor{fbGreen}{RGB}{134,239,172}%   % #86EFAC 浅绿填充
+\definecolor{fbGreenDk}{RGB}{22,101,52}%   % #166534 示例输出深绿
+% ---------- 样式（\tikzstyle 已废弃，改用 \tikzset） ---------- %
+\tikzset{%
+  % --- 参数化基础样式：仅颜色 / 线宽可变，其余共性收进此处 --- %
+  fb-box/.style={shape=rectangle, fill=#1, draw=fbLine, text=fbInk, line width=1, rounded corners=4, inner sep=2, font=\footnotesize, align=center},%
+  fb-edge/.style={draw=fbLine, ->, -latex, line width=#1},%
+  fb-edge-dash/.style={fb-edge=#1, dashed, dash pattern={on 6pt off 3pt}},%
+  % --- 便捷命名样式（与旧版同名，调用处不变） --- %
+  fb-box-blu/.style={fb-box=fbBlue},%
+  fb-box-ind/.style={fb-box=fbIndigo},%
+  fb-box-gry/.style={fb-box=fbGray},%
+  fb-box-pur/.style={fb-box=fbPurple},%
+  fb-box-red/.style={fb-box=fbRed},%
+  fb-box-yel/.style={fb-box=fbYellow},%
+  fb-box-grn/.style={fb-box=fbGreen, line width=1.5},%
+  fb-panel/.style={shape=rectangle, draw=fbBorder, fill=none, line width=1, rounded corners=6, inner sep=0, dashed, dash pattern={on 6pt off 4pt}},%
+  fb-chip/.style={shape=rectangle, fill=fbGray, draw=fbBorder, text=fbInk, line width=0.8, rounded corners=3, inner sep=2, font=\footnotesize\bfseries, align=center},%
+  fb-title/.style={shape=rectangle, draw=none, fill=none, text=fbInk, font=\fontsize{20}{24}\selectfont\bfseries, inner sep=0, minimum width=0, minimum height=0},%
+  fb-subtitle/.style={shape=rectangle, draw=none, fill=none, text=fbSlate, font=\fontsize{12}{14}\selectfont, inner sep=0, minimum width=0, minimum height=0},%
+  fb-sub/.style={shape=rectangle, draw=none, fill=none, text=fbSlate, font=\scriptsize, inner sep=0, minimum width=0, minimum height=0},%
+}%
+% ---------- 双行盒文本宏（#1=加粗标题，#2=灰色小字说明） ---------- %
+% 注意：外层不加花括号——节点文本定界符本身就是外层 {}（TikZ 解析节点  %
+% 文本时会消费第一个 {）；说明文字需多行时请手动展开（见 n301）          %
+\newcommand{\fbTwoLine}[2]{\textbf{#1}\\{\scriptsize\color{fbSlate}#2}}%
+\begin{tikzpicture}[yscale=-1]%
+  % ================= 标题 ================= %
+  \node [fb-title] at (239.2, 10) {语义净化体系};%
+  \node [fb-subtitle] at (239.2, 28.5) {面向工程质量巡检文本的语义净化方法};%
+  % ================= 面板外框 + 标题芯片 ================= %
+  \foreach \i/\w/\h/\x/\y in {%
+      1/128.8/234.6/71.3/153.18, 2/165.6/98.9/232.3/85.33,%
+      3/165.6/126.5/232.3/207.23, 4/147.2/234.6/402.5/153.18%
+    } {%
+    \node [fb-panel, minimum width=\w, minimum height=\h] (panel\i) at (\x,\y) {};%
+  }%
+  \foreach \w/\x/\y/\lab in {%
+      82/47.9/42.88/{(a) 成分解构与向量化},%
+      82/190.5/42.88/{(b) 无关原型构建},%
+      56/177.5/150.98/{(c) 成分过滤},%
+      82/369.9/42.88/{(d) 成分移除与重构}%
+    } {%
+    \node [fb-chip, minimum width=\w, minimum height=14] at (\x,\y) {\lab};%
+  }%
+  % ================= (a) 成分解构与向量化 ================= %
+  \node [fb-box-blu, minimum width=92, minimum height=20.2] (n100) at (71.3, 65.32) {巡检文本};%
+  \node [fb-box-ind, minimum width=101.2, minimum height=20.2] (n101) at (71.3, 99.82) {语义成分切分};%
+  \node [fb-box-gry, minimum width=101.2, minimum height=20.2] (n102) at (71.3, 134.32) {\fbTwoLine{语义单元列表}{(实体 / 时间 / 过程 / 问题描述)}};%
+  \node [fb-box-ind, minimum width=101.2, minimum height=23] (n103) at (71.3, 170.2) {\fbTwoLine{预训练语言模型嵌入}{$\to$ 稠密向量表示}};%
+  \node [fb-box-pur, minimum width=46, minimum height=23] (n104) at (47.15, 209.3) {\fbTwoLine{任务类别标签}{(锚定向量)}};%
+  \node [fb-box-pur, minimum width=46, minimum height=23] (n105) at (97.75, 209.3) {\fbTwoLine{锚定向量}{(基准表征)}};%
+  % --- 纵向主链 --- %
+  \foreach \src/\dst in {n100/n101, n101/n102, n102/n103} {%
+    \draw [fb-edge=1] (\src.south) -- (\dst.north);%
+  }%
+  % ================= (b) 无关原型构建 ================= %
+  \node [fb-box-blu, minimum width=133.4, minimum height=18.4] (n200) at (232.3, 62.1) {四类无关语义种子短语};%
+  \foreach \i/\x/\lab in {1/169.0/时空信息, 2/210.6/专有实体, 3/254.0/过程性描述, 4/295.6/冗余修饰} {%
+    \node [fb-box-red, font=\scriptsize, inner sep=1, minimum width=36, minimum height=12.9] (n20\i) at (\x, 85.33) {\lab};%
+  }%
+  \node [fb-box-red, minimum width=115, minimum height=20.7] (n205) at (232.3, 116.15) {\fbTwoLine{嵌入 $\to$ 无关原型向量组}{(4 类原型，净化目标集合)}};%
+  % --- 种子短语 → 原型 / 向量组 扇出 --- %
+  \foreach \i in {1,...,5} {%
+    \draw [fb-edge=1] (n200.south) -- (n20\i.north);%
+  }%
+  % ================= (c) 成分过滤 ================= %
+  \node [fb-box-ind, minimum width=160, minimum height=20.2] (n300) at (232.3, 170.2) {\fbTwoLine{相似度 / 距离计算}{(每个语义单元 vs 锚定向量 \& 原型)}};%
+  \node [fb-box-yel, minimum width=160, minimum height=23] (n301) at (232.3, 209.3) {\textbf{阈值判定与标记}\\{\scriptsize\color{fbSlate}距原型$<$阈值 OR 距锚定$<$截断}\\{\scriptsize\color{fbSlate}$\to$ 标记待移除}};%
+  \node [fb-box-gry, minimum width=96.6, minimum height=20.2] (n302) at (232.3, 247.02) {\fbTwoLine{记录具体无关类别}{(可追溯的净化解释)}};%
+  \foreach \src/\dst in {n300/n301, n301/n302} {%
+    \draw [fb-edge=1] (\src.south) -- (\dst.north);%
+  }%
+  % ================= (d) 成分移除与重构 ================= %
+  \node [fb-box-ind, minimum width=96.6, minimum height=20.2] (n400) at (402.5, 74.52) {移除标记的语义单元};%
+  \node [fb-box-ind, minimum width=96.6, minimum height=20.2] (n401) at (402.5, 113.62) {以保留单元重构文本};%
+  \node [fb-box-grn, minimum width=126, minimum height=27.6] (n402) at (402.5, 167.9) {\fbTwoLine{$\checkmark$ 净化后文本}{仅保留核心问题语义}};%
+  \node [fb-box-gry, font=\scriptsize, minimum width=126, minimum height=40] (n403) at (402.5, 215.5) {{\color{fbSlate}示例：}\\{\textbf{输入：}{\color{fbSlate}\sout{2号车间西侧}}\ 焊缝存在未焊透缺陷}\\{\color{fbGreenDk}\bfseries 输出：焊缝存在未焊透缺陷}};%
+  % --- 链式流程（中间一条加粗，线宽随数据） --- %
+  \foreach \src/\dst/\lw in {n400/n401/1, n401/n402/1.5, n402/n403/1} {%
+    \draw [fb-edge=\lw] (\src.south) -- (\dst.north);%
+  }%
+  % ================= 跨面板语义传递（虚线 + 小字标注） ================= %
+  \draw [fb-edge-dash=1] (n103.east) -- (n300.west);%
+  \draw [fb-edge-dash=1] (n105.east) -- (n301.west);%
+  \draw [fb-edge-dash=1] (panel2.east) -- (332, 85.33) -- (332, 113.62) -- (n401.west);%
+  \foreach \x/\y/\lab in {136/163/语义向量, 136/204/锚定, 322/80/原型} {%
+    \node [fb-sub] at (\x,\y) {\lab};%
+  }%
+\end{tikzpicture}%

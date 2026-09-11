@@ -1,0 +1,18 @@
+% change the look of the captions
+% 注：CjC.cls 的 \zihao 只识别 "5-" 写法，\zihao{-5} 无效（静默不生效），
+% 已统一改为 \zihao{5-}（小5号）
+\renewcommand{\fnum@figure}{{\zihao{5-}\textbf{Fig.~\thefigure}}}
+\renewcommand{\fnum@table}{{\zihao{5-}\textbf{Table \thetable}}}
+\let\ocaption\caption
+\renewcommand{\caption}[2][]{\ocaption[#1]{{\zihao{5-}\textbf{#2}}}}
+\renewcommand{\@makecaption}[2]{%
+\vskip\abovecaptionskip%
+\sbox\@tempboxa{#1\quad #2}%
+\ifdim \wd\@tempboxa >\hsize
+#1\quad #2\par%
+\else
+\global \@minipagefalse
+\hb@xt@\hsize{\hfil\box\@tempboxa\hfil}%
+\fi
+\vskip\belowcaptionskip}
+

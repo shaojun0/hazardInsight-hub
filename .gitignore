@@ -1,0 +1,28 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+.shots/
+.tmp/
+.runtime-model.json
+.rules-imported.json
+
+# Python 聚类服务
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+backend/python/.venv/
+backend/python/.env
+backend/python/.wheels/
+
+# 本地模型权重（约 1.3G，按需下载，不入库）
+backend/python/cluster-engine/models/
+
+# 聚类运行时产物
+backend/python/cluster-engine/artifacts/
+
+# 智能体工作目录（本地记忆/日志）
+.workbuddy/

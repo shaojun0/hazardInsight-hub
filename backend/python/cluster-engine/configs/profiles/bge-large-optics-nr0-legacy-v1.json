@@ -1,0 +1,24 @@
+{
+  "profile_id": "bge-large-optics-nr0-legacy-v1",
+  "algorithm": "optics",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "min_samples": 8,
+    "xi": 0.07720794052997984,
+    "min_cluster_size": 0.0020001288604670413
+  },
+  "features": {
+    "beta": 1.0,
+    "n_results": 0,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "legacy-v1"
+  },
+  "knowledge_base_id": null,
+  "implementation_version": "legacy-v1",
+  "backend": "python",
+  "compatibility_status": "legacy",
+  "source_result": "output_bge_large/OpticsOptimizer_0_0_best_param.json",
+  "source_sha256": "db265776f616c25821d34c85e41423cf153e0c0dcf7f96db6754d298a92419f8",
+  "max_samples": 500
+}

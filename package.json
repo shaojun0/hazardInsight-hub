@@ -1,0 +1,48 @@
+{
+  "name": "nuclear-hazard-demo",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "核电工程隐患智能识别与定级系统 Demo - 多模态识别 + 知识检索 + ABCD 智能定级",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:all": "concurrently -k -n api,web,py -c blue,green,magenta \"npm run dev:api\" \"npm run dev:web\" \"npm run dev:py\"",
+    "dev:api": "tsx server/index.ts",
+    "dev:web": "vite",
+    "dev:py": "node scripts/clustering/py.mjs serve",
+    "test:py": "node scripts/clustering/py.mjs test",
+    "typecheck": "tsc --noEmit",
+    "test:grading": "tsx --test test/backend/grading.test.ts",
+    "test:hazard": "tsx --test test/backend/hazard-test.test.ts",
+    "evaluate:grading": "tsx scripts/grading/evaluate.ts",
+    "test": "tsx --test test/backend/auth.test.ts test/backend/model-mode.test.ts test/backend/context-observability.test.ts test/backend/openai-compatible.test.ts test/backend/runtime.test.ts test/backend/workflow.test.ts test/backend/hazard-test.test.ts test/frontend/agentSession.test.ts test/frontend/workbenchSession.test.ts test/frontend/bboxGeometry.test.ts test/frontend/modelConfigs.test.ts test/frontend/radialGraph.test.ts test/frontend/clustering.test.ts",
+    "build": "tsc --noEmit && vite build",
+    "start": "cross-env NODE_ENV=production tsx server/index.ts",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "yaml": "^2.9.0",
+    "zod-to-json-schema": "^3.24.6",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

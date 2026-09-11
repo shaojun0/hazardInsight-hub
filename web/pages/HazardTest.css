@@ -1,0 +1,51 @@
+.hazard-test-page > .card { margin-bottom: 16px; }
+.test-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.test-settings { margin-top: 16px; }
+.test-settings input { width: 100px; padding: 7px 9px; border: 1px solid var(--border); border-radius: 7px; color: var(--text); background: var(--surface); }
+.test-settings input:disabled { opacity: .6; }
+.test-dataset { flex: 1; min-width: 230px; line-height: 1.8; overflow-wrap: anywhere; }
+.test-upload { position: relative; overflow: hidden; }
+.test-upload input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+.test-upload:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+.test-upload.is-disabled { opacity: .5; cursor: default; }
+.test-upload.is-disabled input { cursor: default; }
+.test-progress-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; margin-top: 18px; }
+.test-progress { width: 100%; height: 9px; border: 0; border-radius: 9px; overflow: hidden; margin: 10px 0; accent-color: var(--primary); }
+.test-progress::-webkit-progress-bar { background: var(--surface-3); }
+.test-progress::-webkit-progress-value { background: var(--primary); transition: width .2s; }
+.test-stat-grid { display: grid; grid-template-columns: repeat(5, minmax(100px, 1fr)); overflow: hidden; }
+.test-stat-grid > div { padding: 20px 12px; display: flex; flex-direction: column; gap: 8px; text-align: center; border-right: 1px solid var(--border); }
+.test-stat-grid > div:last-child { border-right: 0; }
+.test-stat-grid span, .test-grade-grid span { color: var(--text-3); font-size: 12px; }
+.test-stat-grid strong, .test-grade-grid strong { color: var(--navy); font-size: 26px; }
+.test-stat-grid small, .test-grade-grid small { font-size: 11px; color: var(--text-3); }
+.test-grade-grid { display: grid; grid-template-columns: repeat(4, minmax(140px, 1fr)); gap: 12px; }
+.test-grade-grid > div { display: flex; flex-direction: column; gap: 7px; padding: 14px; border-radius: 10px; background: var(--surface-2); }
+.test-metric-note { line-height: 1.8; margin-top: 16px; }
+.test-toolbar select { margin-left: 6px; padding: 7px 9px; border: 1px solid var(--border); background: var(--surface); border-radius: 7px; color: var(--text); }
+.test-toolbar label { font-size: 13px; }
+.test-export { margin-left: auto; }
+.test-table-scroll { overflow-x: auto; }
+.test-results { min-width: 1040px; }
+.test-results th, .test-results td { white-space: nowrap; }
+.test-results tbody tr { cursor: pointer; }
+.test-description { width: 260px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.6; margin-bottom: 4px; }
+.test-verdict { white-space: nowrap; }
+.test-verdict.is-correct { color: var(--primary-700); background: var(--primary-050); }
+.test-verdict.is-incorrect { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--surface)); }
+.test-results .test-empty { padding: 40px 15px; text-align: center; cursor: default; }
+.test-pagination { display: flex; justify-content: flex-end; align-items: center; padding: 14px 18px; gap: 12px; font-size: 12px; border-top: 1px solid var(--border); }
+.test-error { color: var(--danger); overflow-wrap: anywhere; }
+.test-notice { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-border); padding: 10px; border-radius: 8px; font-size: 12px; }
+.drawer.test-detail { width: min(760px, 100vw); }
+.test-detail .test-detail-summary { padding: 14px; border-radius: 10px; background: var(--surface-2); }
+.test-detail p { line-height: 1.8; overflow-wrap: anywhere; }
+.test-detail h4 { margin: 22px 0 10px; }
+.test-detail details { margin-top: 20px; }
+.test-detail summary { cursor: pointer; font-weight: 600; }
+.test-detail pre { background: var(--surface-2); padding: 12px; border-radius: 8px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; line-height: 1.7; }
+.test-prewrap { white-space: pre-wrap; font-size: 13px; }
+@media (max-width: 1000px) {
+  .test-stat-grid { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
+  .test-grade-grid { grid-template-columns: repeat(2, minmax(140px, 1fr)); }
+}

@@ -1,0 +1,50 @@
+# 默认使用本地模型加载（不依赖外网，也不需要 EMBEDDING_API_KEY）。
+#
+# 切换方式：
+#   * 本地（默认，当前启用）——provider = "sentence_transformer"
+#     要求 source 目录下权重完整，且 file_checksums 与实际文件一致（校验不过会 MODEL_UNAVAILABLE）。
+#     首次准备：
+#       1) 下载权重：python -m retrain_cluster download-model \
+#                      --source BAAI/bge-large-zh-v1.5 --revision main \
+#                      --destination models/bge-large-zh-v1.5
+#       2) 生成清单：python -m retrain_cluster model-manifest \
+#                      --directory models/bge-large-zh-v1.5 \
+#                      --output models/bge-large-zh-v1.5/manifest.json
+#       3) 把 manifest.json 里的 file_checksums 贴到下面 file_checksums 处。
+#    注意：verify_local_model 只接受内联 dict，不接受清单文件路径。
+#
+#   * 远程——把下面 [[models]] 整段换成文件末尾注释里的那段即可。
+#     远程 provider 无法锁定 revision，产物会带 REMOTE_MODEL_REVISION_UNPINNED 告警。
+
+[[models]]
+model_id = "bge-large-zh-v1.5"
+provider = "sentence_transformer"
+# 相对路径按本文件所在目录解析，也可写绝对路径或 ~ 展开路径
+source = "../models/bge-large-zh-v1.5"
+dimension = 1024
+pooling = "cls"
+# 保持与历史远程口径一致：远程侧不归一化，本地也不归一化
+normalize = false
+device = "cpu"
+batch_size = 64
+max_length = 512
+revision = "local-main"
+# 本地文件 SHA-256 清单（由 model-manifest 生成后内联）
+file_checksums = { "1_Pooling/config.json" = "e54c164a07274f2eb45bb724f54a79d1efcc90c41573887cd9a29aeee0597352", "config.json" = "2d4f53504b43a856f982dad647835c0ae98f91a73c8ff0db95ab89e3e4806fa9", "config_sentence_transformers.json" = "940d5f50db195fa6e5e6a4f122c095f77880de259d74b14a65779ed48bdd7c56", "modules.json" = "84e40c8e006c9b1d6c122e02cba9b02458120b5fb0c87b746c41e0207cf642cf", "pytorch_model.bin" = "bf84a56fb045c24e090495195584a3922c3e4204107f0bba8b79c11f67a207f2", "sentence_bert_config.json" = "84e39fda68ccbff05bfa723ae9c0e70e23e2ec373b76e0f8c6e71af72a693cbf", "special_tokens_map.json" = "b6d346be366a7d1d48332dbc9fdf3bf8960b5d879522b7799ddba59e76237ee3", "tokenizer.json" = "7dfbf1966ebf99d471c3796e9b457329d2b2182b817e144f1e904b957745c839", "tokenizer_config.json" = "e1790949631401af1bfb6c9c7aeec7fcf612e274d73579d99f704faea40c8ba7", "vocab.txt" = "45bbac6b341c319adc98a532532882e91a9cefc0329aa57bac9ae761c27b291c" }
+required_files = ["1_Pooling/config.json", "config.json", "config_sentence_transformers.json", "modules.json", "pytorch_model.bin", "sentence_bert_config.json", "special_tokens_map.json", "tokenizer.json", "tokenizer_config.json", "vocab.txt"]
+
+# ── 远程配置（备份，如需切回请替换上面的 [[models]]）────────────────────────
+# [[models]]
+# model_id = "bge-large-zh-v1.5"
+# provider = "openai_compatible"
+# source = "BAAI/bge-large-zh-v1.5"
+# revision = "unversioned"
+# base_url = "https://api.siliconflow.cn/v1"
+# api_key_env = "EMBEDDING_API_KEY"
+# dimension = 1024
+# pooling = "provider"
+# normalize = false
+# dtype = "provider"
+# device = "remote"
+# batch_size = 64
+# timeout_seconds = 45
