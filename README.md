@@ -20,7 +20,7 @@
 - **法规依据展示**：每一条引用均展示文件、编号、条款、原文与引用原因；
 - **历史相似案例 TOP3**：相似度可视化 + 历史定级 + 历史整改措施；
 - **原图 bbox 标注**：等级配色方框、编号标签、点击联动、隐藏标注、导出「隐患说明图」PNG；
-- **目录导航**：`隐患发现 · 隐患识别 · 隐患管理 · 隐患测试 · 聚类分析 · 隐患防控 · 隐患知识库 · Token 统计 · 系统设置`，其余功能收纳为子菜单；
+- **目录导航（三级）**：一级目录为 `隐患发现 · 隐患管理 · 隐患知识库 · 偏差聚类 · 设置`；二级分组沿用原有功能划分（如「隐患管理」下的隐患识别 / 历史记录 / 隐患测试 / 隐患防控），三级为具体页面。绑定单个页面的分组渲染为直接跳转，不再多套一层；
 - **聚类分析（聚类展示 / 聚类测试）**：对隐患文本做无监督聚类，输出簇结构、关键词、代表样本与二维（PCA）散点分布；算法与向量化由独立的 Python 聚类服务（`cluster-engine`，11 种算法 / 20 个 profile / 本地 BGE 中文向量模型）提供，前端不做任何算法近似；「聚类测试」页可查看服务就绪状态、算法与 profile 可用性，并对同一批数据做多算法横向对比；
 - **人工干预**：修改定级、编辑隐患描述、编辑整改建议（立即/整改/预防三类）；
 - **隐患发现**：固定摄像头抓拍识别 + 具身智能机器人自动巡检（多点位画面分析、进度与结果汇总），一键转入隐患台账；
@@ -41,39 +41,113 @@
 
 ## 三、快速开始
 
+### 3.1 环境要求
+
+| 依赖 | 版本 | 是否必需 | 说明 |
+| --- | --- | --- | --- |
+| Node.js | ≥ 20.19.0 | 必需 | 见 `package.json` 的 `engines`；低于此版本 Vite 6 / React 19 可能启动失败 |
+| npm | 随 Node | 必需 | 依赖锁文件为 `package-lock.json` |
+| Python | 3.12 | 可选 | **仅聚类分析需要**，不跑聚类可以不装 |
+| 本地向量模型 | bge-large-zh-v1.5（约 1.3 GB） | 可选 | 仅聚类需要，**未随仓库分发**，需自行下载（见 3.4） |
+
+> 聚类分析是**可选增强**：Python 服务未启动时其余功能完全不受影响，聚类页面会明确提示「服务未就绪」。
+
+### 3.2 安装
+
 ```bash
 npm install
+```
+
+### 3.3 启动（开发模式）
+
+| 命令 | 启动内容 | 端口 |
+| --- | --- | --- |
+| `npm run dev` | Node API + Vite 前端 | 3001 + 5175 |
+| `npm run dev:all` | Node API + Vite + Python 聚类服务 | 3001 + 5175 + 8000 |
+| `npm run dev:api` | 仅 Node API | 3001 |
+| `npm run dev:web` | 仅 Vite 前端 | 5175 |
+| `npm run dev:py` | 仅 Python 聚类服务 | 8000 |
+
+日常开发一条命令即可：
+
+```bash
 npm run dev
 ```
 
-- 前端：<http://localhost:5175>
+- 前端入口：<http://localhost:5175>
 - API：<http://localhost:3001>
 
+> **务必通过 5175 访问前端**。开发模式下 Express 不托管 SPA（直接访问 `http://localhost:3001/` 会返回 404），Vite 才是页面入口；只有生产模式才由 Express 托管 `dist`。
+
 打开页面后，先在「模型配置」中配置真实多模态模型，然后：
+
 1. 点击「使用演示样例」载入任意一张内置演示图，或上传本地 JPG/JPEG/PNG/WebP 图片；
 2. 点击「**AI 智能识别**」；
 3. 查看识别结果、绘制标注、修改等级与整改建议、导出报告。
 
-### 启用聚类分析（可选，独立 Python 服务）
+### 3.4 启用聚类分析（可选，独立 Python 服务）
 
 聚类分析依赖独立的 Python 服务，未启动时**不影响**其余功能，聚类页面会明确提示「服务未就绪」。
 
+> 下面三步中的 `cd` 均以**项目根目录**为起点。
+
+**第 1 步：准备 Python 环境**（Python 3.12）
+
 ```bash
-# 1) 一次性准备 Python 环境（Python 3.12）
 cd backend/python
 python -m venv .venv
-.venv/Scripts/pip install -r requirements.txt      # Linux/macOS 用 .venv/bin/pip
 
-# 2) 回到项目根目录，一条命令同时拉起 Node API + Vite + Python 聚类服务
-cd ../..
-npm run dev:all
+# Windows
+.venv/Scripts/pip install -r requirements.txt
+# Linux / macOS
+.venv/bin/pip install -r requirements.txt
+```
+
+用 `uv` 会快很多（本项目开发时用的就是它）：
+
+```bash
+cd backend/python
+uv venv .venv
+uv pip install --python .venv/Scripts/python.exe -r requirements.txt   # Linux/macOS 换成 .venv/bin/python
+```
+
+> 如果环境装不上 torch，可以只装纯向量所需的依赖：
+> `pip install -e "./cluster-engine[api,algorithms]"`
+> 此时检索增强（nr1）与需要本地模型的 profile 会不可用，`/api/clustering/profiles` 会逐条标出原因。
+
+**第 2 步：下载本地向量模型**
+
+模型约 1.3 GB，**未随仓库分发**（已在 `.gitignore` 中排除），需要拉到 `backend/python/cluster-engine/models/bge-large-zh-v1.5/`。在 `backend/python/cluster-engine` 目录下、激活 venv 后执行：
+
+```bash
+cd backend/python/cluster-engine
+python -m retrain_cluster download-model \
+  --source BAAI/bge-large-zh-v1.5 --revision main \
+  --destination models/bge-large-zh-v1.5
+```
+
+引擎会用 SHA-256 校验模型完整性，清单内联在 `configs/models.toml` 的 `file_checksums` 字段。若下载后校验不通过，重新生成清单并替换该字段：
+
+```bash
+python -m retrain_cluster model-manifest \
+  --directory models/bge-large-zh-v1.5 \
+  --output models/bge-large-zh-v1.5/manifest.json
+```
+
+> 缺少本地模型时接口返回 `MODEL_UNAVAILABLE`，`/api/clustering/health` 与「聚类测试」页会显示模型未就绪。`download-model` 拒绝覆盖已存在的目录，重下需先手动清理。
+
+**第 3 步：启动**
+
+```bash
+cd ../../..           # backend/python/cluster-engine → 项目根目录（三层）
+npm run dev:all       # Node API + Vite + Python 聚类服务
 ```
 
 也可以只启动聚类服务：`npm run dev:py`（默认 `http://127.0.0.1:8000`）。
 
-首次启动会校验本地向量模型（`backend/python/cluster-engine/models/bge-large-zh-v1.5`，约 1.3GB），需要数十秒；期间「聚类测试」页的状态会显示为不可用，点「重新校验」即可。
+首次启动会校验本地向量模型，需要数十秒；期间「聚类测试」页的状态会显示为不可用，点「重新校验」即可。
 
-### 生产模式
+### 3.5 生产模式与 Docker
 
 ```bash
 npm run build     # 类型检查 + 前端构建到 dist/
@@ -82,6 +156,74 @@ npm start         # NODE_ENV=production，Express 同时托管 API 与静态页�
 ```
 
 生产模式下 Express 会把 `/api/clustering/*` 转发到 Python 聚类服务（见 `server/http/clustering.routes.ts`），因此部署时同样需要单独运行该服务；目标地址可用 `PY_CLUSTER_URL` 覆盖。
+
+也可以直接用仓库根目录的 `Dockerfile` 构建单容器镜像（多阶段：构建前端 → 运行时用 `tsx` 执行 TS 服务端源码）：
+
+```bash
+docker build -t hazard-insight-hub .
+docker run -d -p 3001:3001 \
+  -e MULTIMODAL_API_BASE_URL=https://api.deepseek.com/v1 \
+  -e MULTIMODAL_API_KEY=<your-key> \
+  -e MULTIMODAL_MODEL=deepseek-v4-flash-vision-exp \
+  hazard-insight-hub
+# 访问 http://localhost:3001
+```
+
+> 镜像**只包含 Node 侧**（EXPOSE 3001），不含 Python 聚类服务与 1.3 GB 向量模型；需要聚类功能时得另外部署 `backend/python`，并通过 `PY_CLUSTER_URL` 指向它。
+> 运行时用 `tsx` 直接执行 TS 源码，所以镜像里保留了 devDependencies，体积偏大；若要精简需先把服务端也预编译成 JS。
+
+### 3.6 npm 脚本总览
+
+**开发与构建**
+
+| 脚本 | 说明 |
+| --- | --- |
+| `npm run dev` | Node API(3001) + Vite(5175) |
+| `npm run dev:all` | 追加 Python 聚类服务(8000) |
+| `npm run dev:api` | 仅 Node API（`tsx server/index.ts`） |
+| `npm run dev:web` | 仅 Vite 前端 |
+| `npm run dev:py` | 仅 Python 聚类服务 |
+| `npm run build` | `tsc --noEmit` + `vite build` → `dist/` |
+| `npm start` | 生产模式启动（`NODE_ENV=production`） |
+| `npm run preview` | Vite 预览已构建产物（不经过 Express） |
+
+**检查与测试**
+
+| 脚本 | 说明 |
+| --- | --- |
+| `npm run typecheck` | 前端 + Node 侧类型检查（`tsc --noEmit`） |
+| `npm test` | Node 端全部测试（backend + frontend，`tsx --test`） |
+| `npm run test:grading` | 仅定级测试（`test/backend/grading.test.ts`） |
+| `npm run test:hazard` | 仅隐患测试（`test/backend/hazard-test.test.ts`） |
+| `npm run test:py` | Python 单元测试（`pytest`，integration 默认跳过） |
+| `npm run test:py -- -m integration` | Python 端到端（需本地向量模型，会真实跑一次聚类） |
+| `npm run evaluate:grading` | 定级文本阶段基准评测 |
+
+### 3.7 辅助脚本
+
+**`scripts/clustering/py.mjs`** —— Python 解释器探测与统一入口。npm 脚本里没法同时写对 Windows 的 `.venv/Scripts/python.exe` 和 Linux/macOS 的 `.venv/bin/python`，所以由它做一次探测，让上面几个 `dev:py` / `test:py` 保持跨平台：
+
+```bash
+node scripts/clustering/py.mjs serve    # 启动 FastAPI（uvicorn，端口取 PY_CLUSTER_PORT，默认 8000）
+node scripts/clustering/py.mjs test     # 运行 pytest
+node scripts/clustering/py.mjs <args>   # 其余参数原样透传给该解释器
+```
+
+解释器查找顺序：`PY_CLUSTER_PYTHON` 环境变量 → `backend/python/.venv/Scripts/python.exe` → `backend/python/.venv/bin/python` → PATH 中的 `python3`。
+
+**`scripts/grading/`** —— 定级质量评估工具链。多为一次性/离线分析脚本，依赖 `.tmp/grading-evaluation/` 下的中间产物（该目录已 gitignore），需要先跑前置步骤才会有数据：
+
+| 脚本 | 说明 |
+| --- | --- |
+| `evaluate.ts` | 文本阶段基准评测。用法 `tsx scripts/grading/evaluate.ts before\|after [limit] [concurrency]`；标签与复核后字段不进入 prompt，改生产 prompt 前必须先冻结 before 一次 |
+| `summarize.ts` | 汇总评测批次结果，与冻结基线做对比 |
+| `probe.ts` | 探测当前 provider 连通性并打印一次 chat 调用结果 |
+| `baseline/grade.ts` | 冻结的数值定级基线，**仅作评测基准，生产代码不引用** |
+| `profile_data.py` | 只读抽取 BIFF `.xls` 台账文本（需 `xlrd`） |
+| `xls_image_extract.py` | 从 BIFF8 `.xls` 按 ClientAnchor 建立「行号 → 内嵌图片」映射 |
+| `export_test_set.py` | 分层抽样生成 `datas/test/隐患抽样_抽样50条.xlsx`（B 10 / C 20 / D 20，全部带图） |
+| `analyze_quality.py` | 标签一致性审计（近重复隐患描述检测） |
+| `inspect_drawings.py` | 检查工作簿内嵌绘图结构 |
 
 ## 四、环境变量
 
@@ -153,7 +295,7 @@ APP_BASE_URL=http://localhost:5175
 ## 六、项目结构
 
 ```text
-nuclear-hazard-demo/
+hazardInsight-hub/
 ├── shared/                  # 前后端共享：类型 / 分级定义 / 报告 HTML 生成
 │   ├── types.ts
 │   ├── agent-protocol.ts
@@ -183,7 +325,12 @@ nuclear-hazard-demo/
 │   ├── lib/                 # API 客户端、localStorage（记录/台账/主题）、发现设备源、图谱布局、图片工具、hash 路由
 │   ├── api/                 # 领域接口客户端（clustering.ts 等，统一拆封 success/data/error）
 │   └── styles.css           # 设计系统 + 多主题
-├── scripts/clustering/      # 跨平台 Python 启动/测试入口（py.mjs）
+├── scripts/
+│   ├── clustering/py.mjs    # 跨平台 Python 启动/测试入口（解释器探测）
+│   └── grading/             # 定级质量评估工具链（基准评测、样本生成、标签审计）
+├── datas/                   # 隐患抽样数据与演示图片
+├── test/                    # Node 端测试（backend / frontend）
+├── docs/                    # 架构设计与实现说明
 ├── index.html
 ├── vite.config.ts
 ├── tsconfig.json
@@ -282,12 +429,12 @@ web/pages/Clustering*.tsx
 
 ### 5. 运行与测试
 
+环境准备、启动命令与全部 npm 脚本见「**三、快速开始**」的 3.4 / 3.6 小节，聚类相关的常用命令：
+
 ```bash
 npm run dev:py    # 仅启动 Python 聚类服务
 npm run test:py   # 运行 Python 单元测试（integration 默认跳过）
 npm run test:py -- -m integration   # 端到端（需本地向量模型，会真实跑一次聚类）
-npm run typecheck # 前端与 Node 侧类型检查
-npm run build     # 类型检查 + 构建
 ```
 
 `backend/python/tests/` 覆盖：契约（camelCase 双向兼容、强校验、自由字典键名不被改写）、文本清洗、CSV/JSON/TXT/XLSX 解析（含 GBK、BOM、损坏文件）、簇摘要（分组、置信度归一、代表样本、元数据分布、长度不一致报错）、示例数据与上传解析、以及端到端接口。
