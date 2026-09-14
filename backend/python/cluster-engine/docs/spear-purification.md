@@ -122,8 +122,12 @@ python -m pytest                     # 95 passed, 9 deselected
 * `test_purification_off_is_bit_identical_to_the_legacy_path`
 * `test_retrieval_off_is_bit_identical_to_the_legacy_retrieval_path`
 
-全量 20,198 条的端到端复现（ARI 0.26–0.29）必须在装有 bge 权重与预置知识库的
-GPU 机器上跑；归档基准见 `backend/python/app/data/offline_baseline.json`。
+全量 20,198 条已在预演机 GPU 上实跑，逐位一致在全量上成立（nr1 vs 净化关 0/20,198
+条不同），知识库 18,170 条，集成测试通过。**但净化开启的完整框架 ARI 实测为 0.2465，
+低于任务书要求的 0.26–0.29**——归档的 0.2705 实际是"净化关"的数字。完整数据、根因
+排查与"未擅自调参"的说明见
+[`spear-acceptance-evidence.md`](spear-acceptance-evidence.md)；界面用的归档基准见
+`backend/python/app/data/offline_baseline.json`（行名已显式区分净化开/关）。
 
 ## 7. 现场部署
 

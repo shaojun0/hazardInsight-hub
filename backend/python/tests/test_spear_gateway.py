@@ -155,10 +155,15 @@ def test_offline_baseline_matches_the_archived_metrics():
     payload = service.load_offline_baseline()
     data = BaselineData(**payload)
     assert data.full_run is True
-    assert data.rows["nr0"].ari == pytest.approx(0.1528)
-    assert data.rows[SPEAR_RETRIEVAL_PROFILE_ID].ari == pytest.approx(0.2705)
+    assert data.rows["nr0_legacy"].ari == pytest.approx(0.1545)
+    # 关键区分：净化关（nr1）与净化开（完整框架）是两行，不能混为一谈
+    assert data.rows["nr1_legacy_purification_off"].ari == pytest.approx(0.2754)
+    assert data.rows["spear_purified_retrieval_purification_on"].ari == pytest.approx(0.2465)
+    assert data.rows["spear_purified_retrieval_purification_on"].ari < data.rows["nr1_legacy_purification_off"].ari
     assert data.comparison is not None
-    assert data.comparison["ari"] == pytest.approx(0.1177, abs=1e-3)
+    assert data.comparison["ari"] == pytest.approx(0.092, abs=1e-3)
     # 自由字典的键必须是 camelCase，才能与 shared/clustering.ts 对齐
-    assert data.comparison["ariRelative"] == pytest.approx(0.7703, abs=1e-3)
+    assert data.comparison["ariRelative"] == pytest.approx(0.5955, abs=1e-3)
     assert data.source
+    # 验收冲突必须写进 notes，避免界面把 0.2465 当成"达标"
+    assert any("0.26" in note for note in data.notes)

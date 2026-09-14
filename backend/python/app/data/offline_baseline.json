@@ -1,19 +1,29 @@
 {
-  "source": "论文 cjc-article-v5.3 的复现结果（bge-large-zh-v1.5 + 预置浓缩知识库，H20 预演机真机 GPU，测试集全量 20,198 条 / 353 类）",
+  "source": "预演机 GPU 全量实测（RTX PRO 6000 Blackwell / torch 2.8.0+cu129 / transformers 5.17.0 / bge-large-zh-v1.5；测试集全量 20,198 条 / 353 类）",
   "verified_at": "2026-09-14",
   "full_run": true,
-  "baseline_key": "nr0",
-  "target_key": "spear_purified_retrieval",
+  "baseline_key": "nr0_legacy",
+  "target_key": "spear_purified_retrieval_purification_on",
   "rows": {
-    "nr0": {
-      "ari": 0.1528,
-      "vm": 0.5898,
+    "nr0_legacy": {
+      "ari": 0.1545,
+      "vm": 0.5903,
       "n_clusters": 271
     },
-    "spear_purified_retrieval": {
-      "ari": 0.2705,
-      "vm": 0.6797,
-      "n_clusters": 197
+    "nr1_legacy_purification_off": {
+      "ari": 0.2754,
+      "vm": 0.6814,
+      "n_clusters": 203
+    },
+    "spear_purified_purification_on": {
+      "ari": 0.211,
+      "vm": 0.6286,
+      "n_clusters": 294
+    },
+    "spear_purified_retrieval_purification_on": {
+      "ari": 0.2465,
+      "vm": 0.6492,
+      "n_clusters": 260
     },
     "paper_report": {
       "ari": 0.281,
@@ -21,12 +31,14 @@
       "n_clusters": 231
     }
   },
-  "table": "指标\tnr0 基线\tspear_purified_retrieval\t论文报告值\nARI\t0.1528\t0.2705\t0.2810\nVM\t0.5898\t0.6797\t0.6850\n预测聚类数\t271\t197\t231",
+  "table": "指标\tnr0 基线\tnr1（净化关）\tspear_purified（净化开）\tspear_purified_retrieval（净化开）\t论文报告值\nARI\t0.1545\t0.2754\t0.2110\t0.2465\t0.2810\nVM\t0.5903\t0.6814\t0.6286\t0.6492\t0.6850\n预测聚类数\t271\t203\t294\t260\t231",
   "notes": [
-    "nr0 = bge-large-agglomerative-nr0-legacy-v1（纯向量，distance_threshold=2.705561364162625）。",
-    "spear_purified_retrieval = 净化 + 检索增强（beta=0.4973823453680069, k=6）+ Ward 凝聚层次聚类；关掉净化后与 legacy nr1 逐位一致。",
+    "口径说明：`_purification_off` 表示该行的运行**没有开启语义净化**；`_purification_on` 才是净化参与后的结果。此前归档文件里的 0.2705 实际来自 `enable_purify: false` 的运行，属于「净化关」，不是完整框架（净化开）的成绩。",
+    "验收冲突（如实记录）：fork 任务书要求完整框架 ARI 落在 0.26–0.29；净化**开启**的实测为 0.2465，未达该区间。根因不是护栏（关护栏 0.2451）也不是截断高度（2.0–4.0 扫描最高 0.2477），而是净化后输入的聚类分布与检索增强的收益方向不一致：净化让纯向量路径变好（0.1545→0.2110），却让检索增强路径变差（0.2754→0.2465）。未在未获确认的情况下重新调参。",
+    "逐位一致（全量验证）：nr1（净化关）与 spear_purified_retrieval（净化关）标签 0/20,198 条不同；nr0 与 spear_purified（净化关）同样 0/20,198 条不同。",
+    "极性护栏实测：裸 Qwen 会把「…名称与系统不一致」净化为「…名称与系统一致」，护栏拦下并改用只删不改的规则兜底；全量运行中护栏命中 1,471/20,198（7.28%）。",
+    "小环境差异：论文归档口径为 nr0 0.154342 / nr1 0.280819，预演机早期记录为 0.1528 / 0.2705，本表为同一套参数在本次环境下的复现；数值差异来自环境而非配置。",
     "截断高度与样本量强相关：本表是全量 20,198 条口径，抽样运行的指标不具可比性。",
-    "FMS / AMI / HS / CS 未随本表归档（现场可用 /api/bench 读取 output_bge_large 下的完整评测文件）。",
-    "论文报告值来自另一台 GPU 机器，环境差异允许微小偏差；复现值以本表 nr0 / spear_purified_retrieval 两列为准。"
+    "FMS / AMI / HS / CS 未随本表归档；现场可用 output_bge_large 下的完整评测文件读取。"
   ]
 }

@@ -125,8 +125,13 @@ profiles: spear_purified / spear_purified_retrieval 的 purification
 2. **`pytz` / `tzdata` 未列入锁定清单**：本清单的抓取环境里 `pandas` 声明了这两个依赖。
    网关运行期不使用 pandas（`tabular_reader.py` 直接解析 OOXML，XLSX 不依赖 openpyxl），
    因此 `--no-deps` 安装后不影响聚类。若后续要在镜像里跑分析脚本，请先补这两个 pin。
-3. **离线基准结果是归档值**：`backend/python/app/data/offline_baseline.json` 里是
-   论文复现的实测数字（全量 20,198 条口径）。界面会原样展示出处，不与实时结果混排。
+3. **离线基准结果是归档值，且必须区分净化开/关**：`backend/python/app/data/offline_baseline.json`
+   里是预演机 GPU 全量实测（20,198 条口径）。行名显式区分
+   `nr1_legacy_purification_off`（0.2754）与
+   `spear_purified_retrieval_purification_on`（0.2465）——此前把 0.2705 挂在
+   "完整框架"名下是标注错误（该数字来自 `enable_purify: false` 的运行）。
+   **净化开启的 0.2465 未达到任务书要求的 0.26–0.29**，界面与文档都如实展示；
+   详见 `backend/python/cluster-engine/docs/spear-acceptance-evidence.md`。
 4. **现场必须跑全量**：Ward 截断高度与样本量强相关（陷阱 P2），抽样运行的指标不具可比性。
 
 ## 时间预算（对应现场 70 分钟）

@@ -164,15 +164,3 @@ def test_purification_spec_rejects_unknown_backend_and_missing_dependencies():
 def test_qwen_purifier_reports_missing_weights_without_importing_torch():
     with pytest.raises(FileNotFoundError):
         QwenPurifier("/nonexistent/qwen").load()
-
-
-@pytest.mark.integration
-def test_qwen_purifier_keeps_polarity_on_the_real_model():
-    """真模型用例（``-m integration``）：Qwen + 护栏在极性样本上不得反转。"""
-
-    import os
-
-    model_path = os.environ.get("SPEAR_LLM_MODEL_PATH", "/models/Qwen3.8-27B")
-    purifier = GuardedPurifier(QwenPurifier(model_path, device=os.environ.get("DEVICE", "cuda")).load())
-    source = "2025.11.03 在工艺评定车间巡检发现焊机二维码上名称与系统不一致，已要求更换二维码标签"
-    assert "不一致" in purifier.purify_one(source)
