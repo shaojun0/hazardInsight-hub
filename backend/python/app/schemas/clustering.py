@@ -61,6 +61,13 @@ class RunOptions(ApiModel):
         default=None,
         description="检索增强 profile 专用：覆盖 profile 默认知识库，改用指定的偏差数据库；null 表示按 profile 执行",
     )
+    control_purify: bool = Field(
+        default=False,
+        description=(
+            "spear-v1 专用：同一次提交额外跑一遍「净化关」作为对照，配合数据集类别标签计算 6 项外部指标与差值；"
+            "其它 profile 没有净化步骤，会被跳过并在 warnings 里说明"
+        ),
+    )
 
 
 class PurificationStatusInfo(ApiModel):
@@ -326,6 +333,19 @@ class ClusterSummary(ApiModel):
     postprocess: dict[str, Any] | None = None
     # —— spear-v1 扩展：阶段 1（语义净化）的真实状态与前后对照 ——
     purification: PurificationReportInfo | None = None
+    # —— 外部指标：数据集带类别标签时才有；键为 ari/vm/fms/ami/hs/cs/score/nClusters/noiseRatio ——
+    metrics: dict[str, Any] | None = Field(
+        default=None, description="本次主运行的 6 项外部指标（需要数据集带类别标签）"
+    )
+    control_metrics: dict[str, Any] | None = Field(
+        default=None, description="「净化关」对照运行的指标；未勾选对照时为 null"
+    )
+    metrics_comparison: dict[str, float] | None = Field(
+        default=None, description="对照差值（主运行 − 净化关对照）与 ARI 相对增益"
+    )
+    ground_truth: dict[str, Any] | None = Field(
+        default=None, description="真值来源：命中的字段名与带标签条数"
+    )
 
 
 class ClusteringData(ApiModel):
@@ -620,7 +640,15 @@ class BaselineData(ApiModel):
     source: str
     verified_at: str | None = None
     full_run: bool = True
+    full_run_item_count: int | None = Field(
+        default=None,
+        description="归档所指的全量口径样本数；用于识别整份测试集的历史运行（如 20198 条）",
+    )
     rows: dict[str, BaselineMetrics] = Field(default_factory=dict)
+    baseline_key: str | None = Field(
+        default=None, description="差值比较的基线行键；前端据此从 rows 里取对比双方"
+    )
+    target_key: str | None = Field(default=None, description="差值比较的目标行键")
     comparison: dict[str, float] | None = None
     table: str | None = None
     notes: list[str] = Field(default_factory=list)

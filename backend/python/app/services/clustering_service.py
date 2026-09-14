@@ -44,6 +44,7 @@ from app.core.logger import get_logger
 from app.processors.tabular_reader import read_records
 from app.processors.text_cleaner import clean_hazard_text
 from app.services.cluster_digest import build_digest
+from app.services.cluster_evaluation import compare_metrics, evaluate_metrics, extract_ground_truth
 from app.utils.helpers import truncate
 from app.utils.validators import validate_item_count
 
@@ -732,7 +733,95 @@ class ClusteringGatewayService:
         # 知识库覆盖带来的口径变化（如 k 被下调）必须出现在结果告警里，不能只在日志
         if kb_warnings:
             result.setdefault("summary", {}).setdefault("warnings", []).extend(kb_warnings)
+
+        self._attach_evaluation(
+            result=result,
+            engine=engine,
+            profile=profile,
+            sample_ids=sample_ids,
+            texts=texts,
+            metadata=metadata,
+            options=options,
+            implementation=implementation,
+        )
         return result
+
+    # ------------------------------------------------------------------ 指标评估
+
+    def _attach_evaluation(
+        self,
+        *,
+        result: dict[str, Any],
+        engine: Any,
+        profile: Any,
+        sample_ids: list[str],
+        texts: list[str],
+        metadata: list[dict[str, Any]],
+        options: dict[str, Any],
+        implementation: str,
+    ) -> None:
+        """把 6 项外部指标（以及可选的「未净化对照」）挂到 summary 上。
+
+        真值来自数据集自带的标签列（如 ``category``）；**每条样本都带标签才算**，
+        否则只给告警、不猜——用不完整标注算出来的 ARI 比没有 ARI 更危险。
+
+        ``controlPurify=true`` 时额外跑一遍「净化关」作为对照，并与主运行做差值，
+        这正是论文里 nr0 与完整框架（nr-1）的对比口径。对照只在 spear-v1 上成立：
+        其它 profile 本来就没有净化步骤。
+        """
+
+        from retrain_cluster.services.strategies import SPEAR_VERSION
+
+        summary = result.setdefault("summary", {})
+        warnings = summary.setdefault("warnings", [])
+        truth, field = extract_ground_truth(metadata)
+        wants_control = bool(options.get("control_purify"))
+
+        if truth is None:
+            if wants_control:
+                # 勾了对照却没有真值：如实说明，而不是给出一个静默的空结果
+                warnings.append("CONTROL_METRICS_NO_GROUND_TRUTH")
+            return
+
+        predicted = [int(item["cluster_id"]) for item in result.get("items") or []]
+        try:
+            metrics = evaluate_metrics(truth, predicted)
+        except Exception as exc:  # noqa: BLE001 - 指标是附加信息，失败不应让聚类整体失败
+            logger.warning("外部指标计算失败：%s", exc)
+            warnings.append("METRICS_COMPUTATION_FAILED")
+            return
+        summary["metrics"] = metrics
+        summary["ground_truth"] = {"field": field, "labeled": len(truth), "total": len(metadata)}
+        if metrics.get("score") == -1.0:
+            warnings.append("METRICS_UNAVAILABLE_SINGLE_CLUSTER")
+
+        if not wants_control:
+            return
+        if implementation != SPEAR_VERSION:
+            # 没有净化能力的 profile 不存在"未净化对照"；不能假装跑过
+            warnings.append("CONTROL_RUN_SKIPPED_UNSUPPORTED_PROFILE")
+            return
+
+        control = self._run_spear(
+            engine=engine,
+            profile=profile,
+            sample_ids=sample_ids,
+            texts=texts,
+            metadata=metadata,
+            # 对照固定为"净化关"：与请求级 purify 覆盖走同一条语义，不新增口径
+            options={**options, "purify": False},
+            started=time.monotonic(),
+        )
+        control_predicted = [int(item["cluster_id"]) for item in control.get("items") or []]
+        try:
+            control_metrics = evaluate_metrics(truth, control_predicted)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("对照运行指标计算失败：%s", exc)
+            warnings.append("CONTROL_METRICS_COMPUTATION_FAILED")
+            return
+        summary["control_metrics"] = control_metrics
+        # 方向与离线基准一致：base=净化关（nr0 口径），target=本次主运行（净化开）
+        summary["metrics_comparison"] = compare_metrics(control_metrics, metrics)
 
     # ------------------------------------------------------------------ legacy 分支
 

@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {
   ClusteringClusterGroup,
+  ClusteringDatasetItem,
   ClusteringJobInfo,
   ClusteringJobResultData,
   ClusteringKnowledgeBaseInfo,
+  ClusteringOfflineBaseline,
   ClusteringProfileInfo,
   ClusteringResultItem,
 } from '../../shared/clustering.js';
@@ -45,6 +47,19 @@ import {
   summarizeJobResult,
   toggleExpandedJob,
 } from '../../web/lib/clusteringJobHistory.js';
+import {
+  archivedBenchmarkColumns,
+  archivedColumnLabel,
+  comparisonRows,
+  describeGroundTruth,
+  detectLabelField,
+  formatDelta,
+  formatMetricValue,
+  hasComputedMetrics,
+  hasControlMetrics,
+  metricRows,
+  shouldUseArchivedBenchmark,
+} from '../../web/lib/clusteringMetrics.js';
 import {
   DEBUG_ONLY_CLUSTERING_WARNINGS,
   logDebugWarnings,
@@ -969,5 +984,158 @@ test('被隐藏的告警码写进浏览器控制台，没有可隐藏项时不�
     assert.equal(calls.length, 1);
   } finally {
     console.debug = original;
+  }
+});
+
+/* ---------- 外部指标（6 项）与"未净化对照" ---------- */
+
+function datasetItem(id: string, metadata: Record<string, unknown>): ClusteringDatasetItem {
+  return { id, text: `文本 ${id}`, metadata };
+}
+
+const BASELINE: ClusteringOfflineBaseline = {
+  source: 'unit-test',
+  fullRun: true,
+  fullRunItemCount: 20198,
+  baselineKey: 'nr0_legacy',
+  targetKey: 'spear_purified_retrieval_purification_on',
+  rows: {
+    nr0_legacy: { ari: 0.155, vm: 0.59, fms: 0.16, ami: 0.45, hs: 0.585, cs: 0.595, nClusters: 271 },
+    spear_purified_retrieval_purification_on: { ari: 0.281, nClusters: 231 },
+    paper_report: { ari: 0.281, vm: 0.685, fms: 0.285, ami: 0.588, hs: 0.669, cs: 0.702, nClusters: 231 },
+  },
+  comparison: { ari: 0.126, fms: 0.125, nClusters: -40, ariRelative: 0.8129 },
+  notes: ['归档说明'],
+};
+
+test('真值列必须每条样本都有才算数，否则返回 null', () => {
+  assert.equal(
+    detectLabelField([datasetItem('a', { category: '一类' }), datasetItem('b', { category: '二类' })]),
+    'category',
+  );
+  // 大小写不敏感：上传的 CSV 可能写成 Category
+  assert.equal(detectLabelField([datasetItem('a', { Category: 'A' })]), 'Category');
+  assert.equal(detectLabelField([datasetItem('a', { 类别: '一类' })]), '类别');
+  // 部分标注不能算：会得到一个偏移的指标
+  assert.equal(
+    detectLabelField([datasetItem('a', { category: '一类' }), datasetItem('b', {})]),
+    null,
+  );
+  assert.equal(detectLabelField([datasetItem('a', { note: 'x' })]), null);
+  assert.equal(detectLabelField([]), null);
+});
+
+test('指标取值缺失显示占位而不是 0', () => {
+  assert.equal(formatMetricValue(0.281), '0.281');
+  assert.equal(formatMetricValue(0), '0.000');
+  assert.equal(formatMetricValue(null), '—');
+  assert.equal(formatMetricValue(undefined), '—');
+  assert.equal(formatMetricValue(Number.NaN), '—');
+});
+
+test('差值按指标类型格式化：相对增益走百分比、聚类数走整数', () => {
+  assert.equal(formatDelta('ari', 0.126), '+0.126');
+  assert.equal(formatDelta('fms', -0.02), '-0.020');
+  assert.equal(formatDelta('nClusters', -40), '-40');
+  assert.equal(formatDelta('ariRelative', 0.8129), '+81.3%');
+  assert.equal(formatDelta('ariRelative', -0.5), '-50.0%');
+  assert.equal(formatDelta('ari', null), '—');
+});
+
+test('指标表固定输出 6 行，对比表在有余量时补上相对增益', () => {
+  const rows = metricRows({ ari: 0.281, vm: 0.685, nClusters: 231 });
+  assert.deepEqual(rows.map((row) => row.label), ['ARI', 'VM', 'FMS', 'AMI', 'HS', 'CS']);
+  assert.equal(rows[0].display, '0.281');
+  assert.equal(rows[2].display, '—');
+
+  const deltas = comparisonRows({ ari: 0.126, ariRelative: 0.8129 });
+  assert.equal(deltas.length, 7);
+  assert.equal(deltas[6].key, 'ariRelative');
+  assert.equal(deltas[6].display, '+81.3%');
+  // 没有 relative 字段时不要凭空造一行
+  assert.equal(comparisonRows({ ari: 0.126 }).length, 6);
+});
+
+test('真值来源说明带上命中的列与覆盖条数', () => {
+  assert.equal(describeGroundTruth({ field: 'category', labeled: 20198, total: 20198 }), '标注列 category · 20198 / 20198 条');
+  assert.equal(describeGroundTruth(null), '');
+});
+
+test('只有"整份测试集 + 没有实测指标"的历史作业才回退到论文归档', () => {
+  const fullJob = job({ jobId: 'full', itemCount: 20198 });
+  const smallJob = job({ jobId: 'small', itemCount: 50 });
+  const noMetrics = { runId: 'r', totalSamples: 20198 } as unknown as Parameters<typeof shouldUseArchivedBenchmark>[2];
+  const withMetrics = { metrics: { ari: 0.2 } } as unknown as Parameters<typeof shouldUseArchivedBenchmark>[2];
+
+  assert.equal(shouldUseArchivedBenchmark(fullJob, BASELINE, noMetrics), true);
+  // 抽样运行与全量归档不可比，绝不拿归档数字去"补"
+  assert.equal(shouldUseArchivedBenchmark(smallJob, BASELINE, noMetrics), false);
+  // 算出了实测值就永远优先于归档
+  assert.equal(shouldUseArchivedBenchmark(fullJob, BASELINE, withMetrics), false);
+  assert.equal(shouldUseArchivedBenchmark(fullJob, null, noMetrics), false);
+  assert.equal(
+    shouldUseArchivedBenchmark(fullJob, { ...BASELINE, fullRun: false }, noMetrics),
+    false,
+  );
+});
+
+test('归档对比列按 基线 → 目标 → 论文 排列并翻译成人话', () => {
+  const columns = archivedBenchmarkColumns(BASELINE);
+  assert.deepEqual(columns.map((column) => column.key), [
+    'nr0_legacy',
+    'spear_purified_retrieval_purification_on',
+    'paper_report',
+  ]);
+  assert.equal(archivedColumnLabel('nr0_legacy'), '基线 nr0');
+  assert.equal(archivedColumnLabel('paper_report'), '论文报告值');
+  // 不认识的键回显键名，而不是显示空白
+  assert.equal(archivedColumnLabel('mystery_row'), 'mystery_row');
+  // 缺行时整列省略
+  const partial = archivedBenchmarkColumns({ ...BASELINE, targetKey: 'missing' });
+  assert.deepEqual(partial.map((column) => column.key), ['nr0_legacy', 'paper_report']);
+});
+
+test('实测指标与对照的判定只看 summary 上有没有对应字段', () => {
+  const metricSummary = { metrics: { ari: 0.2 } } as unknown as Parameters<typeof hasComputedMetrics>[0];
+  const controlSummary = { metrics: { ari: 0.2 }, controlMetrics: { ari: 0.1 } } as unknown as Parameters<typeof hasComputedMetrics>[0];
+  assert.equal(hasComputedMetrics(metricSummary), true);
+  assert.equal(hasControlMetrics(metricSummary), false);
+  assert.equal(hasControlMetrics(controlSummary), true);
+  assert.equal(hasComputedMetrics(null), false);
+});
+
+test('对照运行选项以 camelCase 透传给同步 /run', async () => {
+  const stub = stubFetch(
+    jsonResponse({ success: true, data: { summary: {}, clusters: [], items: [], visualization: [] }, error: null }),
+  );
+  try {
+    await runClustering([{ id: 'a', text: '未设置警戒围栏', metadata: {} }], {
+      profileId: 'spear_purified',
+      controlPurify: true,
+    });
+    const body = JSON.parse(String(stub.calls[0].init?.body));
+    assert.equal(body.options.controlPurify, true);
+  } finally {
+    stub.restore();
+  }
+});
+
+test('对照运行选项同样透传给异步作业提交', async () => {
+  const stub = stubFetch(
+    jsonResponse({
+      success: true,
+      data: { jobId: 'job_1', status: 'queued', itemCount: 1, detail: {}, warnings: [] },
+      error: null,
+    }),
+  );
+  try {
+    await submitClusteringJob([{ id: 'a', text: '未设置警戒围栏', metadata: {} }], {
+      profileId: 'spear_purified',
+      controlPurify: true,
+    });
+    const body = JSON.parse(String(stub.calls[0].init?.body));
+    assert.equal(body.options.controlPurify, true);
+  } finally {
+    stub.restore();
   }
 });

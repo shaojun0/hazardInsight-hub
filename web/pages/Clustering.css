@@ -375,6 +375,10 @@
 .clustering-history-detail { padding: 0 12px 14px 44px; }
 .clustering-history-stats { margin-top: 4px; border: 1px solid var(--border); border-radius: 10px; }
 .clustering-history-clusters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
+/* 基准指标区：主运行 / 对照 / 差值三列，表格沿用聚类表格的横向滚动 */
+.clustering-benchmark { margin-top: 16px; }
+.clustering-benchmark .clustering-toolbar { align-items: center; gap: 10px; margin-bottom: 8px; }
+.clustering-benchmark .clustering-table-title { font-size: 13.5px; }
 
 /* ---------- 参考数据库（偏差数据库）选择器 ---------- */
 /*

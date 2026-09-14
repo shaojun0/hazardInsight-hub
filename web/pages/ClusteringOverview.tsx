@@ -33,6 +33,7 @@ import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } fro
 import { IconLayers, IconPlay, IconRefresh, IconServer, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
 import { logDebugWarnings, splitClusteringWarnings } from '../lib/clusteringWarnings';
+import { detectLabelField } from '../lib/clusteringMetrics';
 import { useClusterEngine } from '../lib/useClusterEngine';
 import { useClusteringJob } from '../lib/useClusteringJob';
 import { useTableQuery } from '../lib/useTableQuery';
@@ -69,6 +70,12 @@ export function ClusteringOverview() {
    * 只在所选 profile 的实现版本带净化能力时才有意义（见 selectedProfile）。
    */
   const [purifyMode, setPurifyMode] = useState<'profile' | 'on' | 'off'>('profile');
+  /**
+   * 「同时跑未净化对照」：勾选后同一次提交会额外跑一遍净化关，配合数据集自带的
+   * 类别标签算出 6 项外部指标与差值（论文里 nr0 vs 完整框架的口径）。
+   * 只在所选 profile 有净化能力时才有意义。
+   */
+  const [controlPurify, setControlPurify] = useState(false);
   /**
    * 本次检索增强使用的知识库（偏差数据库）。空串表示按 profile 的默认知识库执行。
    * 只对检索增强 profile 有意义（见 retrievalSupported）。
@@ -185,6 +192,14 @@ export function ClusteringOverview() {
    */
   const purificationSupported = Boolean(selectedProfile?.capability?.purification);
 
+  /** 数据集里可作为真值的标签列；没有它就算不出外部指标（前端据此提前说明）。 */
+  const labelField = useMemo(() => detectLabelField(dataset?.items ?? []), [dataset]);
+
+  // 切到没有净化能力的 profile 时把对照选项收起来，避免留下一个已经不成立的勾选
+  useEffect(() => {
+    if (!purificationSupported) setControlPurify(false);
+  }, [purificationSupported]);
+
   // 切换 profile 时把知识库重置为该 profile 的默认库（没有默认则留空=按 profile）。
   useEffect(() => {
     setKnowledgeBaseId(selectedProfile?.knowledgeBaseId ?? '');
@@ -213,8 +228,10 @@ export function ClusteringOverview() {
       reduceMethod: visualize ? 'pca' : 'none',
       purify: purifyOverride,
       knowledgeBaseId: knowledgeBaseOverride,
+      // 勾选时才发送；未勾选保持 undefined，后端默认 false
+      controlPurify: controlPurify || undefined,
     }),
-    [algorithm, profileId, visualize, purifyOverride, knowledgeBaseOverride],
+    [algorithm, profileId, visualize, purifyOverride, knowledgeBaseOverride, controlPurify],
   );
 
   /** 提交后台作业：与「开始聚类」并排，样本大时走这条（提交即返回、可取消、明细分页）。 */
@@ -423,6 +440,24 @@ export function ClusteringOverview() {
             </label>
           )}
           {/*
+            对照运行只在有净化能力时出现：它固定再跑一遍「净化关」，配合数据集自带的
+            类别标签算出 6 项外部指标与差值。没有标签的数据集勾了也白勾，因此就地说明。
+          */}
+          {purificationSupported && (
+            <label
+              className="clustering-check"
+              title="同一次提交额外跑一遍「净化关」作为对照，用数据集的类别标签计算 ARI / VM / FMS / AMI / HS / CS 与差值（耗时约翻倍）"
+            >
+              <input
+                type="checkbox"
+                checked={controlPurify}
+                disabled={running}
+                onChange={(event) => setControlPurify(event.target.checked)}
+              />
+              同时跑未净化对照（算 6 项指标与对比）
+            </label>
+          )}
+          {/*
             参考数据库选择器始终渲染（见 KnowledgeBasePicker）：纯向量 profile 下
             禁用并说明原因，比整块消失更容易理解——"为什么不能选参考数据库"本身就是
             一个必须被回答的问题。默认值是该 profile 清单里的默认库。
@@ -470,6 +505,19 @@ export function ClusteringOverview() {
                 : '提交后台作业'}
           </button>
         </div>
+
+        {controlPurify && !labelField && (
+          <p className="clustering-notice">
+            当前数据集没有可用于比对真值的类别标签列（如 <code>category</code> / <code>label</code>），
+            勾选对照后仍算不出 6 项指标；请改用带标签的数据再提交。
+          </p>
+        )}
+        {controlPurify && labelField && (
+          <p className="small muted">
+            将用「{labelField}」作为真值计算 ARI / VM / FMS / AMI / HS / CS，并额外跑一遍净化关对照
+            （耗时约翻倍）；结果会显示在下方「历史测试记录」对应作业的展开区。
+          </p>
+        )}
 
         {dataset?.warnings.map((warning) => (
           <p key={warning} className="clustering-notice">{warning}</p>
