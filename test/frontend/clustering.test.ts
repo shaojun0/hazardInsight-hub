@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import type { ClusteringClusterGroup, ClusteringResultItem } from '../../shared/clustering.js';
+import type {
+  ClusteringClusterGroup,
+  ClusteringKnowledgeBaseInfo,
+  ClusteringProfileInfo,
+  ClusteringResultItem,
+} from '../../shared/clustering.js';
 import {
   buildKnowledgeBase,
   cancelClusteringJob,
@@ -16,6 +21,7 @@ import {
   uploadClusteringDataset,
 } from '../../web/api/clustering.js';
 import { describeJobStatus, isCancellable } from '../../web/components/ClusteringJobPanel.js';
+import { knowledgeBaseName, supportsRetrieval } from '../../web/components/KnowledgeBasePicker.js';
 import { MAX_VISIBLE, orderClusters } from '../../web/components/ClusterFilterBar.js';
 import { NOISE_COLOR, clusterColor, clusterTint } from '../../web/lib/clusterColor.js';
 import { applyTableQuery, collectKeywordOptions } from '../../web/lib/useTableQuery.js';
@@ -272,8 +278,72 @@ test('job submission keeps the idempotency key in the header and out of the body
   }
 });
 
-test('job item paging sends filters as query params and never fetches everything', async () => {
+test('job submission forwards the selected reference database like the sync run does', async () => {
+  // 异步作业与同步 /run 必须同口径：选中的偏差数据库不能只在同步路径生效。
   const stub = stubFetch(
+    jsonResponse({
+      success: true,
+      data: { jobId: 'job_2', status: 'queued', itemCount: 2, detail: {}, warnings: [] },
+      error: null,
+    }),
+  );
+  try {
+    await submitClusteringJob([{ id: 'a', text: '支架安装偏差', metadata: {} }], {
+      profileId: 'spear_purified_retrieval',
+      datasetId: 'ds_1',
+      knowledgeBaseId: 'kb-2026q1',
+    });
+
+    const body = JSON.parse(String(stub.calls[0].init?.body));
+    assert.equal(body.options.knowledgeBaseId, 'kb-2026q1');
+    assert.equal(body.options.profileId, 'spear_purified_retrieval');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('reference database picker only claims to be active on retrieval profiles', () => {
+  const base: ClusteringProfileInfo = {
+    profileId: 'p-ret',
+    algorithm: 'dbscan',
+    modelId: 'fixture',
+    features: { n_results: 8 },
+    algorithmParams: {},
+    implementationVersion: 'semantic-v1',
+    maxSamples: 1000,
+    available: true,
+    warnings: [],
+  };
+  assert.equal(supportsRetrieval(base), true);
+  assert.equal(supportsRetrieval({ ...base, profileId: 'p-plain', features: { n_results: 0 } }), false);
+  assert.equal(supportsRetrieval({ ...base, features: {} }), false);
+  assert.equal(supportsRetrieval(null), false);
+});
+
+test('knowledge base name falls back to the identifier instead of hiding it', () => {
+  const entry: ClusteringKnowledgeBaseInfo = {
+    knowledgeBaseId: 'kb-1',
+    displayName: '库一',
+    status: 'completed',
+    verification: 'verified',
+    processing: 'raw-upload-v1',
+    entryCount: 3,
+    dimension: 1024,
+    metric: 'l2',
+    modelFingerprint: 'fp',
+    sourceSha256: 'sha',
+    sizeBytes: 1024,
+    hasEntries: true,
+    hasCorpus: true,
+  };
+  const list = [entry];
+  assert.equal(knowledgeBaseName(list, 'kb-1'), '库一');
+  // 找不到时返回标识本身：调用方据此知道"默认库不在清单里"，而不是显示空白
+  assert.equal(knowledgeBaseName(list, 'kb-missing'), 'kb-missing');
+  assert.equal(knowledgeBaseName(list, null), '');
+});
+
+test('job item paging sends filters as query params and never fetches everything', async () => {  const stub = stubFetch(
     jsonResponse({
       success: true,
       data: {

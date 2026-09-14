@@ -343,6 +343,30 @@
 .clustering-job-text { overflow-wrap: anywhere; color: var(--text-1); }
 .clustering-pager { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
 
+/* ---------- 参考数据库（偏差数据库）选择器 ---------- */
+/*
+ * 与算法 / profile 同处一块「运行选项」区，但用一条浅底横条单独成行：
+ * 它是"这次拿哪个库检索"的一级开关，混在其它 label 里最容易被忽略。
+ */
+.kb-picker {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-top: 12px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface-2);
+}
+.kb-picker.is-active { border-color: var(--primary-100); background: var(--primary-050); }
+.kb-picker-field { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; color: var(--text-2); }
+.kb-picker-field .select { min-width: 280px; height: 34px; }
+.kb-picker-title { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--navy); }
+.kb-picker-badge {
+  height: 18px; padding: 0 7px; border-radius: 99px; font-size: 10.5px; font-weight: 600;
+  display: inline-flex; align-items: center;
+  background: var(--surface-3); color: var(--text-3);
+}
+.kb-picker-badge.is-on { background: var(--primary-100); color: var(--primary-700); }
+.kb-picker-hint { flex: 1; min-width: 240px; margin: 0; font-size: 12px; color: var(--text-2); line-height: 1.7; }
+.kb-picker-hint.is-muted { color: var(--text-3); }
+
 /* ---------- 响应式 ---------- */
 @media (max-width: 1180px) {
   .clustering-stat-grid { grid-template-columns: repeat(3, minmax(90px, 1fr)); }
@@ -352,4 +376,6 @@
   .clustering-toolbar { align-items: stretch; }
   .clustering-toolbar .select { min-width: 100%; }
   .clustering-cluster-grid { grid-template-columns: 1fr; }
+  .kb-picker-field .select { min-width: 100%; }
+  .kb-picker { align-items: stretch; }
 }

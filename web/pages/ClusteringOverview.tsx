@@ -26,6 +26,7 @@ import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
 import { ClusterScatter } from '../components/ClusterScatter';
 import { ClusteringJobPanel } from '../components/ClusteringJobPanel';
+import { KnowledgeBasePicker, knowledgeBaseName } from '../components/KnowledgeBasePicker';
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
 import { IconLayers, IconPlay, IconRefresh, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
@@ -34,16 +35,6 @@ import { useTableQuery } from '../lib/useTableQuery';
 import './Clustering.css';
 
 const PAGE_SIZE = 20;
-
-/** 「按 profile 默认」选项的补充说明：把默认库标识映射成可读名称（找不到就显示标识）。 */
-function kbDefaultLabel(
-  defaultId: string | null | undefined,
-  list: ClusteringKnowledgeBaseInfo[],
-): string {
-  if (!defaultId) return '';
-  const found = list.find((kb) => kb.knowledgeBaseId === defaultId);
-  return `（${found?.displayName ?? defaultId}）`;
-}
 
 interface LoadedDataset {
   name: string;
@@ -185,12 +176,6 @@ export function ClusteringOverview() {
    */
   const purificationSupported = Boolean(selectedProfile?.capability?.purification);
 
-  /**
-   * 所选 profile 是否做检索增强（`n_results > 0`）。
-   * 只有这类 profile 才吃「知识库」选择；纯向量 profile 传了会被后端 422。
-   */
-  const retrievalSupported = Number(selectedProfile?.features?.n_results ?? 0) > 0;
-
   // 切换 profile 时把知识库重置为该 profile 的默认库（没有默认则留空=按 profile）。
   useEffect(() => {
     setKnowledgeBaseId(selectedProfile?.knowledgeBaseId ?? '');
@@ -198,6 +183,11 @@ export function ClusteringOverview() {
 
   const purifyOverride = purifyMode === 'profile' ? undefined : purifyMode === 'on';
   const knowledgeBaseOverride = knowledgeBaseId || undefined;
+
+  /** 面板/结果展示用的参考数据库名称（显式选择 > profile 默认；都没有则为空）。 */
+  const knowledgeBaseLabel = knowledgeBaseId
+    ? knowledgeBaseName(knowledgeBases, knowledgeBaseId)
+    : knowledgeBaseName(knowledgeBases, selectedProfile?.knowledgeBaseId);
 
   const canRun = Boolean(dataset && dataset.items.length >= minItems) && !running && !datasetBusy;
 
@@ -254,6 +244,14 @@ export function ClusteringOverview() {
     : result?.clusters.find((cluster) => cluster.clusterId === activeClusterId) ?? null;
 
   const summary = result?.summary;
+
+  /**
+   * 本次实际执行的 profile。
+   * 参考数据库从它反查，而不是回显用户的选择：自动挑选、profile 默认库、
+   * 请求级覆盖三种情况都应当看到真实口径。
+   */
+  const executedProfile =
+    engine.profiles.find((profile) => profile.profileId === summary?.profileId) ?? null;
 
   /** 明细表副标题：按筛选与高亮状态给出人话描述。 */
   const scopeText = (() => {
@@ -386,34 +384,24 @@ export function ClusteringOverview() {
             </label>
           )}
           {/*
-            知识库选择只在所选 profile 做检索增强时出现：纯向量 profile 不吃知识库，
-            后端会直接 422。默认值是该 profile 清单里的默认库；也可切到「偏差数据库」
-            页面新建的库。
+            参考数据库选择器始终渲染（见 KnowledgeBasePicker）：纯向量 profile 下
+            禁用并说明原因，比整块消失更容易理解——"为什么不能选参考数据库"本身就是
+            一个必须被回答的问题。默认值是该 profile 清单里的默认库。
           */}
-          {retrievalSupported && (
-            <label>
-              偏差数据库
-              <select
-                className="select"
-                value={knowledgeBaseId}
-                disabled={running}
-                onChange={(event) => setKnowledgeBaseId(event.target.value)}
-              >
-                <option value="">按 profile 默认{kbDefaultLabel(selectedProfile?.knowledgeBaseId, knowledgeBases)}</option>
-                {knowledgeBases.map((kb) => (
-                  <option key={kb.knowledgeBaseId} value={kb.knowledgeBaseId}>
-                    {kb.displayName}（{kb.entryCount} 条 · {kb.status}）
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
           <span className="small muted">
             {engine.health
               ? `引擎已加载 ${engine.health.engine.profilesTotal} 个 profile，其中 ${engine.health.engine.profilesAvailable} 个可执行`
               : engine.loading ? '正在检查聚类服务…' : '聚类服务不可用'}
           </span>
         </div>
+
+        <KnowledgeBasePicker
+          knowledgeBases={knowledgeBases}
+          value={knowledgeBaseId}
+          onChange={setKnowledgeBaseId}
+          profile={selectedProfile}
+          disabled={running}
+        />
 
         {dataset?.warnings.map((warning) => (
           <p key={warning} className="clustering-notice">{warning}</p>
@@ -426,6 +414,29 @@ export function ClusteringOverview() {
           无净化全量端到端约 214 秒。样本量越大越建议改用下方异步作业面板。
         </p>
       </section>
+
+      {/*
+        大数据量入口。同步接口会把整份明细放进一次 HTTP 响应并在请求上等满整个
+        计算过程，样本到万级就不合适了；作业面板走提交/轮询/取消 + 服务端分页。
+
+        刻意紧挨运行选项：它读取的就是上面的算法 / profile / 净化 / 参考数据库，
+        选项与提交必须在一起，否则「这份作业到底用哪个库」只能靠猜。
+      */}
+      <ClusteringJobPanel
+        items={dataset?.items ?? []}
+        datasetId={dataset?.datasetId ?? null}
+        options={{
+          algorithm: algorithm || undefined,
+          profileId: profileId || undefined,
+          visualize,
+          reduceMethod: visualize ? 'pca' : 'none',
+          purify: purifyOverride,
+          // 与同步「开始聚类」同口径：参考数据库对异步作业同样生效。
+          knowledgeBaseId: knowledgeBaseOverride,
+        }}
+        knowledgeBaseLabel={knowledgeBaseLabel}
+        disabled={!engine.ready || datasetBusy}
+      />
 
       {/*
         离线基准结果：现场演示的兜底入口。
@@ -494,24 +505,6 @@ export function ClusteringOverview() {
         )}
       </section>
 
-      {/*
-        大数据量入口。同步接口会把整份明细放进一次 HTTP 响应并在请求上等满整个
-        计算过程，样本到万级就不合适了；作业面板走提交/轮询/取消 + 服务端分页，
-        因此这里与上面的「开始聚类」并存而不是替换它。
-      */}
-      <ClusteringJobPanel
-        items={dataset?.items ?? []}
-        datasetId={dataset?.datasetId ?? null}
-        options={{
-          algorithm: algorithm || undefined,
-          profileId: profileId || undefined,
-          visualize,
-          reduceMethod: visualize ? 'pca' : 'none',
-          purify: purifyOverride,
-        }}
-        disabled={!engine.ready || datasetBusy}
-      />
-
       {summary && (
         <>
           <section className="card clustering-stat-grid" aria-label="聚类统计">
@@ -552,6 +545,15 @@ export function ClusteringOverview() {
               引擎耗时 {summary.elapsedMs} ms · 网关总耗时 {summary.gatewayMs} ms
               {summary.cacheHit ? ' · 命中向量缓存' : ''}
             </p>
+            {executedProfile?.knowledgeBaseId && (
+              <p className="small muted">
+                参考数据库：<strong>{knowledgeBaseName(knowledgeBases, executedProfile.knowledgeBaseId)}</strong>
+                <span className="mono"> {executedProfile.knowledgeBaseId}</span>
+                {knowledgeBaseId && knowledgeBaseId !== executedProfile.knowledgeBaseId && (
+                  <> · 所选库未生效，本次按 profile 默认库执行</>
+                )}
+              </p>
+            )}
             {/* Auto-K 与向量缓存的真实口径：语义路径下才有的字段 */}
             {(summary.selectedK !== undefined && summary.selectedK !== null) || summary.embeddingCacheMisses !== undefined ? (
               <p className="small muted">

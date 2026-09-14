@@ -63,9 +63,21 @@ interface Props {
   options: ClusteringJobSubmitOptions;
   /** 引擎未就绪或正在上传数据时禁用提交。 */
   disabled?: boolean;
+  /**
+   * 本次作业的参考数据库（可读名称）。
+   * 与聚类选项同一份来源：作业提交后在服务端跑的就是这个库，
+   * 面板必须把它写出来，否则几十分钟后没人记得这份结果是哪个库算的。
+   */
+  knowledgeBaseLabel?: string;
 }
 
-export function ClusteringJobPanel({ items, datasetId, options, disabled = false }: Props) {
+export function ClusteringJobPanel({
+  items,
+  datasetId,
+  options,
+  disabled = false,
+  knowledgeBaseLabel = '',
+}: Props) {
   const jobApi = useClusteringJob();
   const { job, result, error } = jobApi;
 
@@ -171,8 +183,13 @@ export function ClusteringJobPanel({ items, datasetId, options, disabled = false
 
       <p className="small muted">
         样本量大时优先用它：提交后立刻返回作业 ID，可以随时取消（后端会终止执行进程并释放资源），
-        明细按页读取，不需要把整份结果下载到浏览器。
+        明细按页读取，不需要把整份结果下载到浏览器。算法 / profile / 净化 / 参考数据库沿用上方运行选项。
       </p>
+      {knowledgeBaseLabel && (
+        <p className="small muted">
+          参考数据库：<strong>{knowledgeBaseLabel}</strong>
+        </p>
+      )}
 
       {error && <p className="clustering-notice is-error">{error}</p>}
       {job?.error && <p className="clustering-notice is-error">{job.error.message}</p>}

@@ -26,6 +26,7 @@ import {
 } from '../api/clustering';
 import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
+import { KnowledgeBasePicker } from '../components/KnowledgeBasePicker';
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
 import { IconDownload, IconPlay, IconRefresh, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
@@ -131,9 +132,6 @@ export function ClusteringTest() {
     () => selectableProfiles.find((profile) => profile.profileId === profileId),
     [profileId, selectableProfiles],
   );
-
-  /** 只有检索增强 profile（n_results > 0）才吃知识库选择。 */
-  const retrievalSupported = Number(selectedProfile?.features?.n_results ?? 0) > 0;
 
   useEffect(() => {
     setKnowledgeBaseId(selectedProfile?.knowledgeBaseId ?? '');
@@ -400,56 +398,40 @@ export function ClusteringTest() {
         </div>
 
         {mode === 'single' ? (
-          <div className="clustering-toolbar">
-            <label>
-              算法
-              <select className="select" value={algorithm} disabled={running || !engine.ready} onChange={(event) => setAlgorithm(event.target.value)}>
-                <option value="">自动选择（推荐）</option>
-                {availableAlgorithms.map((name) => <option key={name} value={name}>{name}</option>)}
-              </select>
-            </label>
-            <label>
-              配置档 Profile
-              <select className="select" value={profileId} disabled={running || !engine.ready} onChange={(event) => setProfileId(event.target.value)}>
-                <option value="">自动选择</option>
-                {selectableProfiles.map((profile) => (
-                  <option key={profile.profileId} value={profile.profileId}>
-                    {profile.profileId}
-                    {profile.capability?.supportsSingleItem ? ' · 支持单条' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {retrievalSupported && (
+          <>
+            <div className="clustering-toolbar">
               <label>
-                偏差数据库
-                <select
-                  className="select"
-                  value={knowledgeBaseId}
-                  disabled={running}
-                  onChange={(event) => setKnowledgeBaseId(event.target.value)}
-                >
-                  <option value="">
-                    按 profile 默认
-                    {selectedProfile?.knowledgeBaseId
-                      ? `（${
-                          knowledgeBases.find((kb) => kb.knowledgeBaseId === selectedProfile.knowledgeBaseId)
-                            ?.displayName ?? selectedProfile.knowledgeBaseId
-                        }）`
-                      : ''}
-                  </option>
-                  {knowledgeBases.map((kb) => (
-                    <option key={kb.knowledgeBaseId} value={kb.knowledgeBaseId}>
-                      {kb.displayName}（{kb.entryCount} 条）
+                算法
+                <select className="select" value={algorithm} disabled={running || !engine.ready} onChange={(event) => setAlgorithm(event.target.value)}>
+                  <option value="">自动选择（推荐）</option>
+                  {availableAlgorithms.map((name) => <option key={name} value={name}>{name}</option>)}
+                </select>
+              </label>
+              <label>
+                配置档 Profile
+                <select className="select" value={profileId} disabled={running || !engine.ready} onChange={(event) => setProfileId(event.target.value)}>
+                  <option value="">自动选择</option>
+                  {selectableProfiles.map((profile) => (
+                    <option key={profile.profileId} value={profile.profileId}>
+                      {profile.profileId}
+                      {profile.capability?.supportsSingleItem ? ' · 支持单条' : ''}
                     </option>
                   ))}
                 </select>
               </label>
-            )}
-            <button className="btn btn-primary" disabled={running || !engine.ready || items.length < minItems} onClick={() => void startSingle()}>
-              <IconPlay size={15} />{running ? '执行中…' : '执行聚类'}
-            </button>
-          </div>
+              <button className="btn btn-primary" disabled={running || !engine.ready || items.length < minItems} onClick={() => void startSingle()}>
+                <IconPlay size={15} />{running ? '执行中…' : '执行聚类'}
+              </button>
+            </div>
+            {/* 参考数据库：与展示页同一个控件，始终可见；不生效时说明原因。 */}
+            <KnowledgeBasePicker
+              knowledgeBases={knowledgeBases}
+              value={knowledgeBaseId}
+              onChange={setKnowledgeBaseId}
+              profile={selectedProfile}
+              disabled={running}
+            />
+          </>
         ) : (
           <>
             <div className="clustering-check-grid">
@@ -471,6 +453,13 @@ export function ClusteringTest() {
               </button>
               {progress && <span className="small muted" role="status">{progress}</span>}
             </div>
+            {/* 对比模式按各算法自身的 profile 执行，参考数据库不参与；
+                用户若已选了库，必须说明"这里不会用它"，而不是默默忽略。 */}
+            {knowledgeBaseId && (
+              <p className="small muted">
+                多算法对比按各算法自身的 profile 执行，<strong>不指定参考数据库</strong>；需要指定库请切回「单次运行」。
+              </p>
+            )}
           </>
         )}
       </section>
