@@ -132,6 +132,12 @@ export function KnowledgeBase() {
   const [jobs, setJobs] = useState<ClusteringKnowledgeBaseJob[]>([]);
 
   const fileInput = useRef<HTMLInputElement>(null);
+  /**
+   * 用户主动收起过的任务。
+   * 没有它的话，"刷新后自动接回未完成任务"会在收起的下一秒把它重新弹出来——
+   * 自动恢复与用户意图打架，界面会变得不可控。
+   */
+  const dismissedJob = useRef<string | null>(null);
 
   const refresh = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -161,10 +167,11 @@ export function KnowledgeBase() {
   }, [refresh, refreshJobs]);
 
   // 刷新后自动接回未完成的生成任务：作业在服务端继续跑，页面不该"刷新即失联"。
+  // 但用户主动收起过的任务不在此列（见 dismissedJob）。
   useEffect(() => {
     if (job) return;
     const active = jobs.find((item) => !item.terminal);
-    if (active) setJob(active);
+    if (active && active.jobId !== dismissedJob.current) setJob(active);
   }, [jobs, job]);
 
   // 生成作业轮询：终态即停；完成后刷新清单与任务历史，让新库立刻可选。
@@ -248,6 +255,7 @@ export function KnowledgeBase() {
         mode,
         ident: ident.trim() || null,
       });
+      dismissedJob.current = null;
       setJob(created);
       clearFile();
       setName('');
@@ -527,7 +535,10 @@ export function KnowledgeBase() {
             <button
               className="kb-job-close"
               aria-label="收起进度"
-              onClick={() => setJob(null)}
+              onClick={() => {
+                dismissedJob.current = job.jobId;
+                setJob(null);
+              }}
             >
               <IconX size={14} />
             </button>
@@ -577,7 +588,10 @@ export function KnowledgeBase() {
                 <button
                   className="btn btn-outline btn-sm"
                   disabled={job?.jobId === item.jobId}
-                  onClick={() => setJob(item)}
+                  onClick={() => {
+                    dismissedJob.current = null;
+                    setJob(item);
+                  }}
                 >
                   {job?.jobId === item.jobId ? '已显示' : '查看进度'}
                 </button>
