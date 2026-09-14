@@ -1033,27 +1033,24 @@ test('指标取值缺失显示占位而不是 0', () => {
   assert.equal(formatMetricValue(Number.NaN), '—');
 });
 
-test('差值按指标类型格式化：相对增益走百分比、聚类数走整数', () => {
+test('差值格式化：聚类数走整数、其余三位小数带正负号', () => {
   assert.equal(formatDelta('ari', 0.126), '+0.126');
   assert.equal(formatDelta('fms', -0.02), '-0.020');
   assert.equal(formatDelta('nClusters', -40), '-40');
-  assert.equal(formatDelta('ariRelative', 0.8129), '+81.3%');
-  assert.equal(formatDelta('ariRelative', -0.5), '-50.0%');
   assert.equal(formatDelta('ari', null), '—');
 });
 
-test('指标表固定输出 6 行，对比表在有余量时补上相对增益', () => {
+test('指标表与对比表都固定输出 6 行，不夹带相对增益', () => {
   const rows = metricRows({ ari: 0.281, vm: 0.685, nClusters: 231 });
   assert.deepEqual(rows.map((row) => row.label), ['ARI', 'VM', 'FMS', 'AMI', 'HS', 'CS']);
   assert.equal(rows[0].display, '0.281');
   assert.equal(rows[2].display, '—');
 
+  // ariRelative 即使存在也不渲染：界面不替观众把差值换算成"提升百分比"
   const deltas = comparisonRows({ ari: 0.126, ariRelative: 0.8129 });
-  assert.equal(deltas.length, 7);
-  assert.equal(deltas[6].key, 'ariRelative');
-  assert.equal(deltas[6].display, '+81.3%');
-  // 没有 relative 字段时不要凭空造一行
-  assert.equal(comparisonRows({ ari: 0.126 }).length, 6);
+  assert.equal(deltas.length, 6);
+  assert.deepEqual(deltas.map((row) => row.key), ['ari', 'vm', 'fms', 'ami', 'hs', 'cs']);
+  assert.equal(deltas[0].display, '+0.126');
 });
 
 test('真值来源说明带上命中的列与覆盖条数', () => {
@@ -1079,20 +1076,22 @@ test('只有"整份测试集 + 没有实测指标"的历史作业才回退到论
   );
 });
 
-test('归档对比列按 基线 → 目标 → 论文 排列并翻译成人话', () => {
+test('归档对比列只取 基线 → 目标，不把论文报告值并排进来', () => {
   const columns = archivedBenchmarkColumns(BASELINE);
   assert.deepEqual(columns.map((column) => column.key), [
     'nr0_legacy',
     'spear_purified_retrieval_purification_on',
-    'paper_report',
   ]);
+  // 论文报告值来自论文的运行环境，和本机实测列并排会被误读，因此不进这张表
+  assert.ok(!columns.some((column) => column.key === 'paper_report'));
   assert.equal(archivedColumnLabel('nr0_legacy'), '基线 nr0');
-  assert.equal(archivedColumnLabel('paper_report'), '论文报告值');
+  // 论文报告值不在这张表里，映射表也不该认识它（认识就会有人把列加回来）
+  assert.equal(archivedColumnLabel('paper_report'), 'paper_report');
   // 不认识的键回显键名，而不是显示空白
   assert.equal(archivedColumnLabel('mystery_row'), 'mystery_row');
   // 缺行时整列省略
   const partial = archivedBenchmarkColumns({ ...BASELINE, targetKey: 'missing' });
-  assert.deepEqual(partial.map((column) => column.key), ['nr0_legacy', 'paper_report']);
+  assert.deepEqual(partial.map((column) => column.key), ['nr0_legacy']);
 });
 
 test('实测指标与对照的判定只看 summary 上有没有对应字段', () => {

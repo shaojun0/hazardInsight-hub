@@ -69,10 +69,9 @@ export function formatMetricValue(value: number | null | undefined): string {
   return value.toFixed(3);
 }
 
-/** 差值展示：ARI 相对增益按百分比，其余按三位小数并带正负号。 */
+/** 差值展示：聚类数按整数，其余按三位小数并带正负号。 */
 export function formatDelta(key: string, value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  if (key === 'ariRelative') return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(1)}%`;
   if (key === 'nClusters') return `${value >= 0 ? '+' : ''}${value}`;
   return `${value >= 0 ? '+' : ''}${value.toFixed(3)}`;
 }
@@ -92,17 +91,18 @@ export function metricRows(values: ClusteringBaselineMetrics | null | undefined)
   });
 }
 
-/** 差值行：6 项指标 + ARI 相对增益。 */
+/**
+ * 差值行：只保留 6 项指标。
+ *
+ * 刻意**不展示 `ariRelative`**（ARI 相对增益）：一个百分比会让"提升多少"看起来
+ * 比原始差值更确定，而基线很小时它会被放大得不成比例；要看相对变化，用两个
+ * 绝对值一除即可，不需要界面替观众下这个结论。
+ */
 export function comparisonRows(comparison: Record<string, number> | null | undefined): MetricRow[] {
-  const rows: MetricRow[] = METRIC_DEFINITIONS.map(({ key, label }) => {
+  return METRIC_DEFINITIONS.map(({ key, label }) => {
     const value = comparison?.[String(key)] ?? null;
     return { key: String(key), label, value, display: formatDelta(String(key), value) };
   });
-  if (comparison && 'ariRelative' in comparison) {
-    const value = comparison.ariRelative;
-    rows.push({ key: 'ariRelative', label: 'ARI 相对增益', value, display: formatDelta('ariRelative', value) });
-  }
-  return rows;
 }
 
 /** 本次运行是否真的算出了外部指标。 */
@@ -139,11 +139,16 @@ export function shouldUseArchivedBenchmark(
   return job.itemCount === fullCount;
 }
 
-/** 归档对比的列（基线 / 目标 / 论文报告），缺行则整列省略。 */
+/**
+ * 归档对比的列（基线 / 目标），缺行则整列省略。
+ *
+ * 刻意**不含 `paper_report`**：论文报告值来自论文的运行环境，不是本机实测，
+ * 与归档里的实测列并排容易被误读成"同一套环境跑出来的三组数"。
+ */
 export function archivedBenchmarkColumns(
   baseline: ClusteringOfflineBaseline,
 ): Array<{ key: string; row: ClusteringBaselineMetrics }> {
-  const candidates = [baseline.baselineKey, baseline.targetKey, 'paper_report'];
+  const candidates = [baseline.baselineKey, baseline.targetKey];
   const columns: Array<{ key: string; row: ClusteringBaselineMetrics }> = [];
   for (const key of candidates) {
     if (!key) continue;
@@ -153,14 +158,17 @@ export function archivedBenchmarkColumns(
   return columns;
 }
 
-/** 归档行的中文列名：把 `nr0_legacy` 这类键翻译成人话，找不到映射就回显键名。 */
+/**
+ * 归档行的中文列名：把 `nr0_legacy` 这类键翻译成人话，找不到映射就回显键名。
+ *
+ * 不包含 `paper_report`：这张对比表只放本机归档实测列，论文报告值不参与。
+ */
 export function archivedColumnLabel(key: string): string {
   const known: Record<string, string> = {
     nr0_legacy: '基线 nr0',
     nr1_legacy_purification_off: 'nr1（净化关）',
     spear_purified_purification_on: 'spear_purified（净化开）',
     spear_purified_retrieval_purification_on: '完整框架（净化开）',
-    paper_report: '论文报告值',
   };
   return known[key] ?? key;
 }

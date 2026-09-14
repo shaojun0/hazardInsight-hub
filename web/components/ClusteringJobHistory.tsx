@@ -420,7 +420,6 @@ function JobBenchmark({ job, summary }: { job: ClusteringJobInfo; summary: Clust
     const control = new Map(metricRows(summary.controlMetrics).map((row) => [row.key, row]));
     const deltas = new Map(comparisonRows(summary.metricsComparison).map((row) => [row.key, row]));
     const withControl = hasControlMetrics(summary);
-    const relative = deltas.get('ariRelative');
     return (
       <div className="clustering-benchmark">
         <div className="clustering-toolbar">
@@ -446,14 +445,6 @@ function JobBenchmark({ job, summary }: { job: ClusteringJobInfo; summary: Clust
                   {withControl && <td>{deltas.get(row.key)?.display ?? '—'}</td>}
                 </tr>
               ))}
-              {withControl && relative && (
-                <tr>
-                  <td>{relative.label}</td>
-                  <td>—</td>
-                  <td>—</td>
-                  <td>{relative.display}</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
@@ -480,10 +471,6 @@ function JobBenchmark({ job, summary }: { job: ClusteringJobInfo; summary: Clust
           <h3 className="clustering-table-title">基准指标 · 论文归档</h3>
           <span className="small muted">本作业未计算指标，下为归档对比</span>
         </div>
-        <p className="clustering-notice">
-          这次运行没有留下外部指标产物（全量 {baseline.fullRunItemCount} 条口径与归档一致）。
-          下面展示的是归档基准，<strong>不是本次作业的实测值</strong>；来源：{baseline.source}
-        </p>
         <div className="clustering-table-scroll">
           <table className="table clustering-table">
             <thead>
@@ -512,13 +499,6 @@ function JobBenchmark({ job, summary }: { job: ClusteringJobInfo; summary: Clust
                 ))}
                 <td>{formatDelta('nClusters', baseline.comparison?.nClusters)}</td>
               </tr>
-              {baseline.comparison?.ariRelative !== undefined && (
-                <tr>
-                  <td>ARI 相对增益</td>
-                  <td colSpan={columns.length}>—</td>
-                  <td>{formatDelta('ariRelative', baseline.comparison.ariRelative)}</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>
