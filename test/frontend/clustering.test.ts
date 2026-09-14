@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type {
   ClusteringClusterGroup,
+  ClusteringJobInfo,
+  ClusteringJobResultData,
   ClusteringKnowledgeBaseInfo,
   ClusteringProfileInfo,
   ClusteringResultItem,
@@ -13,6 +15,8 @@ import {
   fetchClusteringHealth,
   fetchClusteringJob,
   fetchClusteringJobItems,
+  fetchClusteringJobResult,
+  fetchClusteringJobs,
   fetchClusteringProfiles,
   fetchKnowledgeBaseDetail,
   fetchKnowledgeBases,
@@ -24,6 +28,23 @@ import { describeJobStatus, isCancellable } from '../../web/components/Clusterin
 import { knowledgeBaseName, supportsRetrieval } from '../../web/components/KnowledgeBasePicker.js';
 import { MAX_VISIBLE, orderClusters } from '../../web/components/ClusterFilterBar.js';
 import { NOISE_COLOR, clusterColor, clusterTint } from '../../web/lib/clusterColor.js';
+import {
+  clampPage,
+  clusterOverview,
+  countActiveJobs,
+  describeJobOutcome,
+  formatJobDuration,
+  formatJobTime,
+  hasActiveJobs,
+  historyExpandKind,
+  historyStatusClass,
+  historyStatusLabel,
+  jobItemsPageCount,
+  jobRunLabel,
+  sortJobsNewestFirst,
+  summarizeJobResult,
+  toggleExpandedJob,
+} from '../../web/lib/clusteringJobHistory.js';
 import { applyTableQuery, collectKeywordOptions } from '../../web/lib/useTableQuery.js';
 
 /**
@@ -656,4 +677,236 @@ test('offline baseline uses the relative endpoint and unwraps the envelope', asy
   } finally {
     stub.restore();
   }
+});
+
+/* ---------- 历史测试记录（作业历史） ---------- */
+
+/** 构造一条作业记录，只填测试关心的字段。 */
+function job(overrides: Partial<ClusteringJobInfo> = {}): ClusteringJobInfo {
+  return {
+    jobId: 'job_1',
+    status: 'succeeded',
+    itemCount: 7,
+    cancelRequested: false,
+    hardCancelled: false,
+    detail: {},
+    warnings: [],
+    terminal: true,
+    ...overrides,
+  };
+}
+
+/** 构造一份作业结果摘要（不含明细），字段保持与后端口径一致。 */
+function jobResult(overrides: Partial<ClusteringJobResultData> = {}): ClusteringJobResultData {
+  return {
+    jobId: 'job_1',
+    runId: 'run_1',
+    summary: {
+      runId: 'run_1',
+      totalSamples: 10,
+      clusterCount: 3,
+      noiseCount: 1,
+      largestClusterSize: 5,
+      smallestClusterSize: 2,
+      avgClusterSize: 3,
+      algorithm: 'dbscan',
+      profileId: 'p-1',
+      modelId: 'm-1',
+      implementationVersion: 'legacy-v1',
+      embeddingDimension: 1024,
+      cacheHit: true,
+      elapsedMs: 120,
+      gatewayMs: 130,
+      warnings: [],
+    },
+    clusters: [],
+    aggregate: {},
+    visualization: [],
+    detail: { itemCount: 10 },
+    warnings: [],
+    ...overrides,
+  };
+}
+
+test('历史列表按 limit 与可选 status 拼查询参数', async () => {
+  // Response 的 body 只能读一次，两次调用必须各自生成新的响应
+  const stub = stubFetch(() =>
+    jsonResponse({ success: true, data: { jobs: [job()] }, error: null }),
+  );
+  try {
+    const all = await fetchClusteringJobs(50);
+    const succeeded = await fetchClusteringJobs(10, 'succeeded');
+
+    assert.equal(stub.calls[0].url, '/api/clustering/jobs?limit=50');
+    assert.equal(stub.calls[1].url, '/api/clustering/jobs?limit=10&status=succeeded');
+    assert.equal(all[0].jobId, 'job_1');
+    assert.equal(succeeded.length, 1);
+    // 历史来源必须是同源相对路径：换了后端地址也不该在前端写死
+    for (const call of stub.calls) {
+      assert.ok(!/^https?:\/\//.test(call.url), `不应硬编码绝对地址：${call.url}`);
+    }
+  } finally {
+    stub.restore();
+  }
+});
+
+test('展开历史记录只读结果摘要接口，不去拉全量明细', async () => {
+  const stub = stubFetch(
+    jsonResponse({ success: true, data: jobResult(), error: null }),
+  );
+  try {
+    const data = await fetchClusteringJobResult('job_1');
+    assert.equal(stub.calls[0].url, '/api/clustering/jobs/job_1/result');
+    assert.equal(data.summary.clusterCount, 3);
+    assert.equal(data.detail.itemCount, 10);
+  } finally {
+    stub.restore();
+  }
+});
+
+test('作业历史按时间新→旧排序且不改动入参数组', () => {
+  const input = [
+    job({ jobId: 'old', createdAt: '2026-01-01T00:00:00Z' }),
+    job({ jobId: 'new', createdAt: '2026-03-01T00:00:00Z' }),
+    job({ jobId: 'mid', createdAt: '2026-02-01T00:00:00Z' }),
+  ];
+  const ordered = sortJobsNewestFirst(input);
+  assert.deepEqual(ordered.map((item) => item.jobId), ['new', 'mid', 'old']);
+  // 排序是给展示用的，不应把调用方持有的列表顺序改掉
+  assert.deepEqual(input.map((item) => item.jobId), ['old', 'new', 'mid']);
+});
+
+test('createdAt 相同或缺失时用 jobId 兜底，顺序稳定可复现', () => {
+  const same = [
+    job({ jobId: 'b', createdAt: '2026-01-01T00:00:00Z' }),
+    job({ jobId: 'a', createdAt: '2026-01-01T00:00:00Z' }),
+  ];
+  assert.deepEqual(sortJobsNewestFirst(same).map((item) => item.jobId), ['a', 'b']);
+  const missing = [job({ jobId: 'x', createdAt: null }), job({ jobId: 'y', createdAt: null })];
+  assert.deepEqual(sortJobsNewestFirst(missing).map((item) => item.jobId), ['x', 'y']);
+});
+
+test('耗时优先用 startedAt→finishedAt，未完成显示"进行中"', () => {
+  assert.equal(
+    formatJobDuration(
+      job({
+        startedAt: '2026-01-01T00:00:00Z',
+        finishedAt: '2026-01-01T00:02:05Z',
+        createdAt: '2026-01-01T00:00:00Z',
+      }),
+    ),
+    '2 分 5 秒',
+  );
+  assert.equal(
+    formatJobDuration(
+      job({
+        status: 'running',
+        terminal: false,
+        startedAt: '2026-01-01T00:00:00Z',
+        createdAt: '2026-01-01T00:00:00Z',
+      }),
+    ),
+    '进行中',
+  );
+  assert.equal(formatJobDuration(job({ createdAt: null })), '—');
+  // 走兜底口径：没有 startedAt 时用 createdAt→updatedAt
+  assert.equal(
+    formatJobDuration(
+      job({
+        startedAt: null,
+        createdAt: '2026-01-01T00:00:00Z',
+        finishedAt: null,
+        updatedAt: '2026-01-01T01:30:00Z',
+      }),
+    ),
+    '1 小时 30 分',
+  );
+});
+
+test('记录时间缺失显示占位，无法解析时原样回显而不是 Invalid Date', () => {
+  assert.equal(formatJobTime(null), '—');
+  assert.equal(formatJobTime(''), '—');
+  assert.equal(formatJobTime('not-a-date'), 'not-a-date');
+  assert.match(formatJobTime('2026-03-01T00:00:00Z'), /2026/);
+});
+
+test('展开形态按状态分流：成功读结果、失败给原因、取消与执行中各自说明', () => {
+  assert.equal(historyExpandKind(job({ status: 'succeeded' })), 'result');
+  assert.equal(historyExpandKind(job({ status: 'failed', terminal: true })), 'failed');
+  assert.equal(historyExpandKind(job({ status: 'cancelled', terminal: true, hardCancelled: true })), 'cancelled');
+  assert.equal(historyExpandKind(job({ status: 'running', terminal: false })), 'running');
+  assert.equal(historyExpandKind(job({ status: 'queued', terminal: false })), 'running');
+
+  // 失败必须把后端给的原因和错误码写出来，而不是只显示"失败"两个字
+  const failed = describeJobOutcome(
+    job({ status: 'failed', error: { code: 'JOB_RESULT_UNAVAILABLE', message: '模型不可用' } }),
+  );
+  assert.match(failed, /模型不可用/);
+  assert.match(failed, /JOB_RESULT_UNAVAILABLE/);
+  // 取消是调用方意图，措辞不能写成失败
+  assert.match(describeJobOutcome(job({ status: 'cancelled', hardCancelled: true })), /已取消/);
+  assert.match(describeJobOutcome(job({ status: 'running', terminal: false })), /正在执行/);
+  assert.match(describeJobOutcome(job({ status: 'queued', terminal: false, itemCount: 3 })), /排队/);
+});
+
+test('点击同一条收起、点击另一条切换，同一时刻只展开一条', () => {
+  assert.equal(toggleExpandedJob(null, 'job_1'), 'job_1');
+  assert.equal(toggleExpandedJob('job_1', 'job_1'), null);
+  assert.equal(toggleExpandedJob('job_1', 'job_2'), 'job_2');
+});
+
+test('结果摘要包含统计口径，质量分缺失时整项省略', () => {
+  const rows = summarizeJobResult(jobResult());
+  const labels = rows.map(([label]) => label);
+  assert.ok(labels.includes('样本总数'));
+  assert.ok(labels.includes('网关耗时'));
+  assert.ok(!labels.includes('簇质量分'));
+
+  const withQuality = summarizeJobResult(
+    jobResult({ summary: { ...jobResult().summary, qualityScore: 0.4213 } }),
+  );
+  assert.equal(withQuality.find(([label]) => label === '簇质量分')?.[1], '0.421');
+});
+
+test('簇概览按大小降序截断且不改动原数组', () => {
+  const clusters = [group(0, 3), group(1, 40), group(2, 12), group(-1, 7)];
+  const overview = clusterOverview(clusters, 2);
+  assert.deepEqual(overview.map((item) => item.clusterId), [1, 2]);
+  assert.deepEqual(clusters.map((item) => item.clusterId), [0, 1, 2, -1]);
+});
+
+test('明细分页页数至少为 1，页码收敛在合法区间', () => {
+  assert.equal(jobItemsPageCount(0), 1);
+  assert.equal(jobItemsPageCount(20), 1);
+  assert.equal(jobItemsPageCount(21), 2);
+  assert.equal(jobItemsPageCount(Number.NaN), 1);
+  assert.equal(clampPage(5, 3), 2);
+  assert.equal(clampPage(-1, 3), 0);
+  assert.equal(clampPage(1, 1), 0);
+});
+
+test('未完成作业计数驱动"可刷新看进度"的提示', () => {
+  const list = [
+    job({ jobId: 'a', status: 'running', terminal: false }),
+    job({ jobId: 'b', status: 'succeeded' }),
+    job({ jobId: 'c', status: 'queued', terminal: false }),
+  ];
+  assert.equal(hasActiveJobs(list), true);
+  assert.equal(countActiveJobs(list), 2);
+  assert.equal(hasActiveJobs([job({ jobId: 'b' })]), false);
+  assert.equal(countActiveJobs([]), 0);
+});
+
+test('历史状态的徽标文案与配色分级正确', () => {
+  assert.equal(historyStatusLabel(job({ status: 'succeeded' })), '已完成');
+  assert.equal(historyStatusLabel(job({ status: 'failed' })), '失败');
+  assert.equal(historyStatusClass(job({ status: 'succeeded' })), 'is-ok');
+  assert.equal(historyStatusClass(job({ status: 'failed' })), 'is-bad');
+  assert.equal(historyStatusClass(job({ status: 'cancelled' })), 'is-warn');
+  assert.equal(historyStatusClass(job({ status: 'running', terminal: false })), '');
+});
+
+test('历史记录优先用 Run ID 定位，缺失时退回 jobId', () => {
+  assert.equal(jobRunLabel(job({ runId: 'run_9' })), 'run_9');
+  assert.equal(jobRunLabel(job({ runId: null })), 'job_1');
 });

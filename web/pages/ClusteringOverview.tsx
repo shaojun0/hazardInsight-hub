@@ -27,6 +27,7 @@ import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
 import { ClusterScatter } from '../components/ClusterScatter';
 import { ClusteringJobPanel, isCancellable } from '../components/ClusteringJobPanel';
+import { ClusteringJobHistory } from '../components/ClusteringJobHistory';
 import { KnowledgeBasePicker, knowledgeBaseName } from '../components/KnowledgeBasePicker';
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
 import { IconLayers, IconPlay, IconRefresh, IconServer, IconUpload } from '../components/icons';
@@ -457,22 +458,11 @@ export function ClusteringOverview() {
                 ? '提交中…'
                 : '提交后台作业'}
           </button>
-          <span className="small muted clustering-actions-hint">
-            样本少（百条级）用「开始聚类」即点即看；上万条请用「提交后台作业」，
-            提交后可以离开页面，回来还能翻明细。
-          </span>
         </div>
 
         {dataset?.warnings.map((warning) => (
           <p key={warning} className="clustering-notice">{warning}</p>
         ))}
-        <p className="small muted">
-          支持 CSV / XLSX / JSON / TXT，自动识别文本列；最多 30 万条、200 MB。文本会做规范化清洗（全角转半角、去控制字符、合并空白）。
-        </p>
-        <p className="small muted">
-          现场耗时预期：向量嵌入约 10 秒（全量 20,198 条）· 语义净化约 0.3–0.5 秒/条（开启且首条需等模型装载约 20 秒）·
-          无净化全量端到端约 214 秒。样本量越大越建议直接用上面的「提交后台作业」。
-        </p>
       </section>
 
       {/*
@@ -557,6 +547,12 @@ export function ClusteringOverview() {
           </>
         )}
       </section>
+
+      {/*
+        历史测试记录紧挨着离线基准归档：两者都回答"过去的结果在哪"。
+        区别必须一眼可见——归档是单份论文复现数据，历史是真实跑过的作业。
+      */}
+      <ClusteringJobHistory />
 
       {summary && (
         <>
