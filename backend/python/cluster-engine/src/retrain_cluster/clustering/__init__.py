@@ -4,11 +4,20 @@
 必须经 :func:`get_clusterer` 惰性获取，避免 `import` 阶段就拖入所有算法依赖。
 """
 
-from .registry import ALGORITHMS, API_ALGORITHMS, WARNINGS, available, get_clusterer, validate_params
+from .registry import (
+    ALGORITHMS,
+    API_ALGORITHMS,
+    SEMANTIC_ALGORITHMS,
+    WARNINGS,
+    available,
+    get_clusterer,
+    validate_params,
+)
 
 __all__ = [
     "ALGORITHMS",
     "API_ALGORITHMS",
+    "SEMANTIC_ALGORITHMS",
     "WARNINGS",
     "available",
     "get_clusterer",

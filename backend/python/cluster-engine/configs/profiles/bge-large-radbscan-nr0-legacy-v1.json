@@ -19,5 +19,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/RADBSCANOptimizer_0_0_best_param.json",
   "source_sha256": "419bd7c0b2f7d49fc2f1fb755f081bfbe00a4328d4278c5f9aa1ab7f683eb58b",
-  "max_samples": 500
+  "max_samples": 300000
 }

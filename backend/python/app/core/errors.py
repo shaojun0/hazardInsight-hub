@@ -112,6 +112,66 @@ class ClusteringError(ClusterGatewayError):
     status = 500
 
 
+# ------------------------------------------------------------------ 异步作业
+
+
+class JobNotFoundError(ClusterGatewayError):
+    """作业不存在，或已被历史清理回收。"""
+
+    code = "JOB_NOT_FOUND"
+    status = 404
+
+
+class JobNotCancellableError(ClusterGatewayError):
+    """作业已进入终态，取消没有意义。"""
+
+    code = "JOB_NOT_CANCELLABLE"
+    status = 409
+
+
+class JobCapacityError(ClusterGatewayError):
+    """排队中/执行中的作业已达容量上限。"""
+
+    code = "JOB_CAPACITY_EXCEEDED"
+    status = 429
+
+
+class IdempotencyConflictError(ClusterGatewayError):
+    """同一个幂等键被用于两次不同的请求。
+
+    这里刻意**不**返回"上次那个作业"：请求内容不同却复用同一个键，说明调用方
+    的键生成逻辑有问题。静默返回旧结果会把一个明显的调用方 bug 变成
+    "结果对不上"的疑难问题。
+    """
+
+    code = "IDEMPOTENCY_CONFLICT"
+    status = 409
+
+
+class JobResultError(ClusterGatewayError):
+    """作业结果产物缺失或损坏。"""
+
+    code = "JOB_RESULT_UNAVAILABLE"
+    status = 409
+
+
+# ------------------------------------------------------------------ 数据集引用
+
+
+class DatasetNotFoundError(ClusterGatewayError):
+    """数据集引用不存在（或已被清理）。"""
+
+    code = "DATASET_NOT_FOUND"
+    status = 404
+
+
+class DatasetTooLargeError(ClusterGatewayError):
+    """数据集超过服务允许保留的样本数。"""
+
+    code = "DATASET_TOO_LARGE"
+    status = 413
+
+
 def error_payload(exc: ClusterGatewayError, *, request_id: str | None = None) -> dict[str, Any]:
     """把领域异常转成响应里的 `error` 对象。
 

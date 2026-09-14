@@ -1,0 +1,69 @@
+{
+  "profile_id": "bge-large-semantic-auto-kmeans-v1",
+  "corpora": [
+    "backend/python/cluster-engine/artifacts/calibration/corpus/corpus_rule_categories.json",
+    "backend/python/cluster-engine/artifacts/calibration/corpus/corpus_field_samples.json"
+  ],
+  "label_fields": ["l2", "l1"],
+  "splits": ["calibration", "holdout"],
+  "notes": [
+    "本轮扫描的三条前提都来自实测，不是先验假设：",
+    "① 必须在算法实际运行的聚类空间里扫。语料 967 < profile 的 pca_min_samples=2000 时降维被跳过，",
+    "   原始 1024 维 BGE 空间的各向异性让 Auto-K 退化：80 个真实主题塌成 k=2、B-cubed F1 只有 0.061；",
+    "   启用 PCA(64) 后同一批数据是 k=74、F1 0.417，且单次耗时从 22s 降到 4s。",
+    "   因此扫描用 --profile-params 下调 pca_min_samples，并把覆盖值写进结果 JSON。",
+    "② t_sem 不是单调旋钮，且响应面很不连续：",
+    "   0.78 → k=2；0.80 → k=74；0.82 → k=69；0.84 → k=12。",
+    "   机制是后处理的簇半径上限 r_max = min(1-t_sem, median+3*1.4826*MAD)：",
+    "   t_sem 降低会让 1-t_sem 变成主约束，成员被无差别吸进最近的簇。",
+    "   所以可行窗口只有 [0.80, 0.82]，本轮在该窗口内加密到 0.01。",
+    "③ t_single 在本语料上不起作用：单主题分支要求 loo_q10 >= t_single，",
+    "   而实测 loo_q10 = 0.587，远低于任何候选值，因此 K=1 分支从未触发。",
+    "   它的取值保留现状，并在报告里声明「本轮未校准」。",
+    "阈值本身仍然只落 semantic-calibration-v1.json；覆盖值只影响扫描口径。"
+  ],
+  "stages": [
+    {
+      "name": "r1-t_pair",
+      "from": "baseline",
+      "mode": "oat",
+      "values": { "t_pair": [0.30, 0.40, 0.45, 0.50, 0.55, 0.60, 0.65] }
+    },
+    {
+      "name": "r2-t_sem",
+      "from": "best",
+      "mode": "oat",
+      "values": { "t_sem": [0.79, 0.80, 0.81, 0.82] }
+    },
+    {
+      "name": "r3-t_merge",
+      "from": "best",
+      "mode": "oat",
+      "values": { "t_merge": [0.82, 0.84, 0.86, 0.88, 0.90] }
+    },
+    {
+      "name": "r4-t_single",
+      "from": "best",
+      "mode": "oat",
+      "values": { "t_single": [0.80, 0.82, 0.84, 0.85] }
+    },
+    {
+      "name": "r5-grid-sem-merge",
+      "from": "best",
+      "mode": "grid",
+      "values": {
+        "t_sem": [0.79, 0.80, 0.81, 0.82],
+        "t_merge": [0.84, 0.86, 0.88]
+      }
+    },
+    {
+      "name": "r6-grid-pair-merge",
+      "from": "best",
+      "mode": "grid",
+      "values": {
+        "t_pair": [0.40, 0.45, 0.50],
+        "t_merge": [0.84, 0.86, 0.88]
+      }
+    }
+  ]
+}

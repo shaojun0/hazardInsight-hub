@@ -1,0 +1,52 @@
+{
+  "schema_version": "semantic-calibration-v1",
+  "_comment": "semantic-v1 的阈值与权重。换模型/换推理口径必须重新校准并把 status 改回 experimental。生产 profile 引用这里的 version，运行样本不反向覆盖本文件。",
+  "versions": {
+    "semantic-calibration-v1": {
+      "version": "semantic-calibration-v1",
+      "model_id": "bge-large-zh-v1.5",
+      "status": "experimental",
+      "scope": "bge-large-zh-v1.5 / pooling=cls / max_length=512 / fp32 / device=cpu / 输出后 L2 归一化。保留历史扫描阈值与 source_fingerprint：rule-categories(967)、field-samples(49)，pca_min_samples=128 时 calibration B-cubed F1=0.420427、稀有主题召回=0.783784。上述指标仅属于历史实现与扫描条件，不是当前小批次或生产 profile 的质量证明。小批次候选评估已改为完整样本加排除自身的成对支持校验，小簇使用成对阈值，须重新执行独立质量校准后才能恢复 validated；本次修复没有下调任何阈值。",
+      "source_fingerprint": "400f207b6eb9c79c7d7d54caa7ddfb0496bed26724a18e21547125ad3bbebea7",
+      "thresholds": {
+        "t_sem": 0.8,
+        "t_pair": 0.5,
+        "t_merge": 0.88,
+        "t_margin": 0.03,
+        "t_single": 0.85
+      },
+      "weights": {
+        "sep": 0.45,
+        "coh": 0.35,
+        "coverage": 0.2,
+        "tiny": 0.15,
+        "k_complexity": 0.05
+      },
+      "quality_weights": {
+        "c": 0.4,
+        "s": 0.25,
+        "r": 0.2,
+        "e": 0.15
+      },
+      "confidence_weights": {
+        "a": 0.6,
+        "m": 0.25,
+        "l": 0.15
+      },
+      "scaling": {
+        "sep_low": 0.03,
+        "sep_high": 0.35,
+        "coh_low": 0.8,
+        "coh_high": 0.98
+      },
+      "naming": {
+        "min_chars": 6,
+        "max_chars": 18,
+        "top_keywords": 8,
+        "representatives": 3,
+        "vocab_limit": 30000,
+        "long_text_chars": 512
+      }
+    }
+  }
+}

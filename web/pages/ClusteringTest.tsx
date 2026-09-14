@@ -2,8 +2,11 @@
  * 聚类测试（工程验证视角）。
  *
  * 与「聚类展示」的分工：展示页关注结果呈现，本页关注**引擎本身是否工作正常**——
- * 服务就绪状态、算法/profile 可用性、单次运行的逐条归属，以及同一批数据在不同
+ * 服务就绪状态、单次运行的逐条归属，以及同一批数据在不同
  * 算法下的横向对比（簇数、噪声、耗时、是否命中向量缓存）。
+ *
+ * 算法与配置档的可用性明细表已按需求移除；算法/profile 的可用数据仍由
+ * `useClusterEngine` 提供，用于「执行测试」的下拉与对比勾选。
  *
  * 所有计算同样全部委托给 Python 聚类服务，前端不做任何算法近似。
  */
@@ -15,10 +18,13 @@ import type {
   ClusteringResultItem,
 } from '../../shared/clustering';
 import { fetchClusteringSample, runClustering, uploadClusteringDataset } from '../api/clustering';
+import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
+import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
 import { IconDownload, IconPlay, IconRefresh, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
 import { useClusterEngine } from '../lib/useClusterEngine';
+import { useTableQuery } from '../lib/useTableQuery';
 import './Clustering.css';
 
 type Mode = 'single' | 'compare';
@@ -42,6 +48,11 @@ interface ComparisonRow {
   cacheHit?: boolean;
   profileId?: string;
   message?: string;
+  /** 语义路径专有：Auto-K 选出的 K 与后处理后的最终簇数。 */
+  selectedK?: number | null;
+  finalK?: number | null;
+  /** 语义路径专有：簇质量分（宏平均）——横向对比时这是最有信息量的一列。 */
+  qualityScore?: number | null;
 }
 
 export function ClusteringTest() {
@@ -60,6 +71,14 @@ export function ClusteringTest() {
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  /**
+   * 明细表的筛选/排序/搜索。
+   * 「所属簇筛选条」的选中态由本 hook 统一持有（与表头筛选共用一条流水线），
+   * 页面不再单独维护一份，避免两处状态不同步。
+   */
+  const table = useTableQuery(result?.items, result?.clusters);
+  const { setRowClusterFilter } = table;
 
   const loadSample = useCallback(async () => {
     setBusy(true);
@@ -115,10 +134,19 @@ export function ClusteringTest() {
     }
   }, []);
 
+  /**
+   * 单次执行允许的最小样本数：从所选 profile 的 `capability` 读取。
+   * `semantic-v1` 支持单条（返回 singleton 并如实标注低支持），`legacy-v1` 要求 ≥2。
+   */
+  const minItems = useMemo(() => {
+    const picked = selectableProfiles.find((profile) => profile.profileId === profileId);
+    return picked?.capability?.supportsSingleItem ? 1 : 2;
+  }, [profileId, selectableProfiles]);
+
   const applyPasted = useCallback(() => {
     const parsed = parsePastedText(pasted);
-    if (parsed.length < 2) {
-      setError('手工输入至少需要 2 行文本才能聚类。');
+    if (parsed.length < minItems) {
+      setError(`手工输入至少需要 ${minItems} 行文本才能聚类。`);
       return;
     }
     setItems(parsed);
@@ -126,9 +154,13 @@ export function ClusteringTest() {
     setResult(null);
     setComparison([]);
     setError('');
-  }, [pasted]);
+  }, [pasted, minItems]);
 
   const startSingle = useCallback(async () => {
+    if (items.length < minItems) {
+      setError(`当前 profile 至少需要 ${minItems} 条样本才能聚类。`);
+      return;
+    }
     setRunning(true);
     setError('');
     setProgress('');
@@ -141,12 +173,13 @@ export function ClusteringTest() {
       setResult(next);
       setComparison([]);
       setSelectedId(null);
+      setRowClusterFilter([]);
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
       setRunning(false);
     }
-  }, [items, algorithm, profileId]);
+  }, [items, algorithm, profileId, minItems, setRowClusterFilter]);
 
   const startCompare = useCallback(async () => {
     if (selectedAlgorithms.length < 2) {
@@ -172,6 +205,9 @@ export function ClusteringTest() {
           gatewayMs: data.summary.gatewayMs,
           cacheHit: data.summary.cacheHit,
           profileId: data.summary.profileId,
+          selectedK: data.summary.selectedK,
+          finalK: data.summary.finalK,
+          qualityScore: data.summary.qualityScore,
         });
       } catch (cause) {
         rows.push({ algorithm: name, ok: false, message: (cause as Error).message });
@@ -185,9 +221,17 @@ export function ClusteringTest() {
 
   const selected = result?.items.find((item) => item.id === selectedId) ?? null;
 
+  /** 逐条归属表的最终行集：簇筛选 → 关键词搜索 → 表头筛选 → 表头排序。 */
+  const filteredRows = table.rows;
+
   const exportCsv = useCallback(() => {
     if (!result) return;
-    const header = ['id', 'cluster_id', 'cluster_label', 'confidence', 'distance', 'keywords', 'text'];
+    // assignment_status / noise_reason 是语义路径的诊断口径（legacy 下为空串）：
+    // 导出后能直接统计"哪些样本为什么没被归类"，不必回头翻运行产物。
+    const header = [
+      'id', 'cluster_id', 'cluster_label', 'confidence', 'distance',
+      'assignment_status', 'noise_reason', 'keywords', 'text',
+    ];
     const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`;
     const lines = [
       header.join(','),
@@ -197,6 +241,8 @@ export function ClusteringTest() {
         item.clusterLabel,
         item.confidence ?? '',
         item.distance ?? '',
+        item.assignmentStatus ?? '',
+        item.noiseReason ?? '',
         item.keywords.join(' '),
         item.text,
       ].map(escape).join(',')),
@@ -223,7 +269,7 @@ export function ClusteringTest() {
       <div className="page-head">
         <h1>聚类分析 · 聚类测试</h1>
         <div className="sub">
-          检查 Python 聚类服务的就绪状态、算法与配置档可用性，并对同一批数据做单次运行或多算法横向对比。
+          检查 Python 聚类服务的就绪状态，并对同一批数据做单次运行或多算法横向对比。
         </div>
       </div>
 
@@ -278,53 +324,6 @@ export function ClusteringTest() {
       </section>
 
       <section className="card card-pad">
-        <div className="clustering-section-head"><h2>算法与配置档可用性</h2></div>
-        <div className="clustering-table-scroll">
-          <table className="table clustering-table">
-            <thead>
-              <tr><th>算法</th><th>可执行</th><th>后端</th><th>样本上限</th><th>说明</th></tr>
-            </thead>
-            <tbody>
-              {engine.algorithms.map((item) => (
-                <tr key={item.algorithm}>
-                  <td>{item.algorithm}</td>
-                  <td>{item.available ? <span className="clustering-status is-ok">可用</span> : <span className="clustering-status is-bad">不可用</span>}</td>
-                  <td>{item.backend}</td>
-                  <td>{item.maxSamples}</td>
-                  <td className="clustering-note">{item.warnings.join(' ') || '—'}</td>
-                </tr>
-              ))}
-              {!engine.algorithms.length && <tr><td colSpan={5} className="clustering-empty">尚未获取到算法清单。</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        <div className="clustering-table-scroll clustering-mt">
-          <table className="table clustering-table">
-            <thead>
-              <tr><th>Profile</th><th>算法</th><th>模型</th><th>检索增强</th><th>样本上限</th><th>状态</th></tr>
-            </thead>
-            <tbody>
-              {engine.profiles.map((profile) => (
-                <tr key={profile.profileId}>
-                  <td className="clustering-id">{profile.profileId}</td>
-                  <td>{profile.algorithm}</td>
-                  <td>{profile.modelId}</td>
-                  <td>{Number(profile.features.n_results ?? 0) > 0 ? `top-${String(profile.features.n_results)}` : '否'}</td>
-                  <td>{profile.maxSamples}</td>
-                  <td>
-                    {profile.available
-                      ? <span className="clustering-status is-ok">可执行</span>
-                      : <span className="clustering-status is-bad" title={profile.unavailableReason ?? ''}>{profile.unavailableReason ?? '不可用'}</span>}
-                  </td>
-                </tr>
-              ))}
-              {!engine.profiles.length && <tr><td colSpan={6} className="clustering-empty">尚未获取到 profile 清单。</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="card card-pad">
         <div className="clustering-section-head">
           <h2>测试数据</h2>
           <div className="clustering-head-actions">
@@ -347,7 +346,7 @@ export function ClusteringTest() {
         </div>
         <p className="small muted">当前数据：<strong>{sourceName || '—'}</strong> · 共 {items.length} 条样本</p>
         <label className="clustering-paste">
-          手工输入（每行一条，至少 2 行）
+          手工输入（每行一条，至少 {minItems} 行）
           <textarea
             className="textarea"
             rows={4}
@@ -383,11 +382,14 @@ export function ClusteringTest() {
               <select className="select" value={profileId} disabled={running || !engine.ready} onChange={(event) => setProfileId(event.target.value)}>
                 <option value="">自动选择</option>
                 {selectableProfiles.map((profile) => (
-                  <option key={profile.profileId} value={profile.profileId}>{profile.profileId}</option>
+                  <option key={profile.profileId} value={profile.profileId}>
+                    {profile.profileId}
+                    {profile.capability?.supportsSingleItem ? ' · 支持单条' : ''}
+                  </option>
                 ))}
               </select>
             </label>
-            <button className="btn btn-primary" disabled={running || !engine.ready || items.length < 2} onClick={() => void startSingle()}>
+            <button className="btn btn-primary" disabled={running || !engine.ready || items.length < minItems} onClick={() => void startSingle()}>
               <IconPlay size={15} />{running ? '执行中…' : '执行聚类'}
             </button>
           </div>
@@ -425,7 +427,7 @@ export function ClusteringTest() {
           <div className="clustering-table-scroll">
             <table className="table clustering-table">
               <thead>
-                <tr><th>算法</th><th>Profile</th><th>簇数量</th><th>噪声点</th><th>引擎耗时</th><th>网关耗时</th><th>向量缓存</th><th>状态</th></tr>
+                <tr><th>算法</th><th>Profile</th><th>簇数量</th><th>噪声点</th><th title="Auto-K 选出的 K → 后处理后的最终簇数">Auto-K</th><th title="簇质量分（宏平均，0~1；仅 semantic-v1 返回）">质量分</th><th>引擎耗时</th><th>网关耗时</th><th>向量缓存</th><th>状态</th></tr>
               </thead>
               <tbody>
                 {comparison.map((row) => (
@@ -434,6 +436,8 @@ export function ClusteringTest() {
                     <td className="clustering-id">{row.profileId ?? '—'}</td>
                     <td>{row.clusterCount ?? '—'}</td>
                     <td>{row.noiseCount ?? '—'}</td>
+                    <td>{row.selectedK === undefined || row.selectedK === null ? '—' : `${row.selectedK} → ${row.finalK ?? '—'}`}</td>
+                    <td>{row.qualityScore === undefined || row.qualityScore === null ? '—' : row.qualityScore.toFixed(3)}</td>
                     <td>{row.elapsedMs === undefined ? '—' : `${row.elapsedMs} ms`}</td>
                     <td>{row.gatewayMs === undefined ? '—' : `${row.gatewayMs} ms`}</td>
                     <td>{row.cacheHit === undefined ? '—' : row.cacheHit ? '命中' : '未命中'}</td>
@@ -460,10 +464,29 @@ export function ClusteringTest() {
               ['算法', result.summary.algorithm],
               ['引擎耗时', `${result.summary.elapsedMs} ms`],
               ['网关耗时', `${result.summary.gatewayMs} ms`],
+              ...(result.summary.uniqueCount ? [['去重后唯一文本', String(result.summary.uniqueCount)] as [string, string]] : []),
+              ...(result.summary.selectedK !== undefined && result.summary.selectedK !== null
+                ? [['Auto-K → 最终 K', `${result.summary.selectedK} → ${result.summary.finalK ?? '—'}（${result.summary.autoKStatus ?? '—'}）`] as [string, string]]
+                : []),
+              ...(result.summary.qualityScore !== undefined && result.summary.qualityScore !== null
+                ? [['簇质量分（宏平均）', result.summary.qualityScore.toFixed(3)] as [string, string]]
+                : []),
             ].map(([label, value]) => (
               <div key={label}><span>{label}</span><strong>{value}</strong></div>
             ))}
           </section>
+
+          {result.summary.calibrationVersion && (
+            <section className="card card-pad">
+              <p className="clustering-notice">
+                阈值校准：{result.summary.calibrationVersion}
+                {result.summary.calibrationStatus === 'validated' ? '（已校准）' : '（尚未经人工校准验证，结果仅供探索）'}
+                {result.summary.embeddingCacheMisses !== undefined && result.summary.embeddingCacheMisses !== null
+                  ? ` · 向量缓存命中 ${result.summary.embeddingCacheHits ?? 0} / 未命中 ${result.summary.embeddingCacheMisses}`
+                  : ''}
+              </p>
+            </section>
+          )}
 
           <section className="card">
             <div className="clustering-toolbar card-pad">
@@ -473,13 +496,91 @@ export function ClusteringTest() {
                 <IconDownload size={14} />导出 CSV
               </button>
             </div>
+            <ClusterFilterBar
+              clusters={result.clusters}
+              selected={table.rowClusterFilter}
+              onChange={table.setRowClusterFilter}
+              matchCount={filteredRows.length}
+              totalCount={result.items.length}
+            />
+            {/* 关键词列的表内搜索：独立于表头下拉筛选，用于自由检索 */}
+            <div className="kw-search-bar">
+              <KeywordSearch
+                value={table.keywordSearch}
+                onChange={table.setKeywordSearch}
+                suggestions={table.keywordOptions.slice(0, 6).map((option) => option.value)}
+              />
+              <span className="small muted">
+                筛选后 {filteredRows.length} / {result.items.length} 条
+              </span>
+              {table.hasColumnFilter && (
+                <button type="button" className="btn btn-outline btn-sm" onClick={table.clearColumnFilters}>
+                  清除筛选
+                </button>
+              )}
+            </div>
             <div className="clustering-table-scroll">
               <table className="table clustering-table">
                 <thead>
-                  <tr><th>ID</th><th>文本</th><th>所属簇</th><th>置信度</th><th>到质心距离</th><th>关键词</th></tr>
+                  <tr>
+                    <th>ID</th>
+                    <th>文本</th>
+                    <FilterHeader label="所属簇" selectedCount={table.clusterColumnFilter.length}>
+                      {(close) => (
+                        <OptionList
+                          options={table.clusterOptions.map((option) => ({
+                            key: String(option.clusterId),
+                            label: `${option.label}`,
+                            count: option.size,
+                            color: clusterColor(option.clusterId),
+                          }))}
+                          selected={table.clusterColumnFilter.map(String)}
+                          onToggle={(key) => table.toggleClusterColumnFilter(Number(key))}
+                          onClear={() => {
+                            for (const id of [...table.clusterColumnFilter]) table.toggleClusterColumnFilter(id);
+                            close();
+                          }}
+                          emptyText="本次运行没有簇。"
+                        />
+                      )}
+                    </FilterHeader>
+                    <SortHeader
+                      label="置信度"
+                      sortKey="confidence"
+                      direction={table.sortDirectionOf('confidence')}
+                      onToggle={table.toggleSort}
+                      hint="按置信度排序（降序 = 置信度高在前）"
+                    />
+                    <SortHeader
+                      label="到质心距离"
+                      sortKey="distance"
+                      direction={table.sortDirectionOf('distance')}
+                      onToggle={table.toggleSort}
+                      hint="按到质心距离排序（升序 = 离质心近在前）"
+                    />
+                    <FilterHeader label="关键词" selectedCount={table.keywordColumnFilter.length}>
+                      {(close) => (
+                        <OptionList
+                          options={table.keywordOptions.map((option) => ({
+                            key: option.value,
+                            label: option.value,
+                            count: option.count,
+                          }))}
+                          selected={table.keywordColumnFilter}
+                          onToggle={table.toggleKeywordColumnFilter}
+                          onClear={() => {
+                            for (const keyword of [...table.keywordColumnFilter]) table.toggleKeywordColumnFilter(keyword);
+                            close();
+                          }}
+                          emptyText="没有匹配的关键词。"
+                          searchPlaceholder="过滤关键词…"
+                        />
+                      )}
+                    </FilterHeader>
+                  </tr>
                 </thead>
                 <tbody>
-                  {result.items.map((item) => (
+                  {filteredRows.map((item) => (
                     <tr key={item.id} onClick={() => setSelectedId(item.id)}>
                       <td className="clustering-id">{item.id}</td>
                       <td><div className="clustering-text" title={item.text}>{item.text}</div></td>
@@ -488,10 +589,18 @@ export function ClusteringTest() {
                       </td>
                       <td>{item.confidence === null || item.confidence === undefined ? '—' : item.confidence.toFixed(3)}</td>
                       <td>{item.distance === null || item.distance === undefined ? '—' : item.distance.toFixed(3)}</td>
-                      <td className="clustering-keywords">{item.keywords.slice(0, 3).join('、') || '—'}</td>
+                      <td className="clustering-keywords">
+                        <KeywordCells keywords={item.keywords} search={table.keywordSearch} />
+                      </td>
                     </tr>
                   ))}
-                  {!result.items.length && <tr><td colSpan={6} className="clustering-empty">本次运行没有返回样本归属。</td></tr>}
+                  {!filteredRows.length && (
+                    <tr>
+                      <td colSpan={6} className="clustering-empty">
+                        {result.items.length ? '没有符合当前筛选条件的样本。' : '本次运行没有返回样本归属。'}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

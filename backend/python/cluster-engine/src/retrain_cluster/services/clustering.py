@@ -68,6 +68,40 @@ class ClusteringService:
         self.cache = EmbeddingCache(settings.artifacts_dir / "embeddings")
         self.runs = RunStore(settings.artifacts_dir / "runs")
         self.retrievers = {}
+        #: semantic-v1 的文本级缓存与策略实例：与 legacy 批缓存**并存**，互不影响。
+        self._text_cache = None
+        self._strategies = {}
+
+    def text_cache(self):
+        """惰性构造文本级缓存；legacy 路径永远不会创建它。"""
+
+        if self._text_cache is None:
+            from ..artifacts.text_cache import TextEmbeddingCache
+
+            self._text_cache = TextEmbeddingCache(self.settings.artifacts_dir / "text_embeddings")
+        return self._text_cache
+
+    def _strategy(self, profile):
+        """按实现版本取回 Strategy；legacy profile 返回 None。
+
+        策略实例按 (profile_id, 实现版本) 缓存：同一 profile 的重复请求不会
+        反复重建对象，而不同 profile 的参数差异也不会互相污染。
+        """
+
+        from .strategies import build_strategy, strategy_for_version
+
+        if strategy_for_version(profile.implementation_version) is None:
+            return None
+        key = (profile.profile_id, profile.implementation_version, profile.fingerprint)
+        if key not in self._strategies:
+            self._strategies[key] = build_strategy(
+                profile,
+                settings=self.settings,
+                catalog=self.catalog,
+                encoders=self.encoders,
+                text_cache=self.text_cache(),
+            )
+        return self._strategies[key]
 
     def embeddings(self, texts, model_id):
         """取（或计算）文本向量，返回 (向量矩阵, 模型指纹, 是否命中缓存)。"""
@@ -103,11 +137,22 @@ class ClusteringService:
 
         enforce_api_limits=True 时（API 场景）会额外受设置里的 max_samples 限制，
         因为对外服务必须防止超大批次，而 CLI/实验场景则可放宽。
+
+        分派发生在很靠前的位置：``implementation_version`` 决定走
+        legacy 还是 semantic 策略。两者共享同一个 ``ClusteringService`` 实例，
+        因此编码器实例缓存（本地模型加载很贵）在两条路径之间是复用的。
         """
         started = time.monotonic()
         profile = self.catalog.profile(request["profile_id"])
-        limit = min(self.settings.max_samples, profile.max_samples) if enforce_api_limits else None
         items = request["items"]
+
+        # semantic-v1 有自己的准入规则（允许单条、允许空白项被判 invalid），
+        # 因此必须在 legacy 的 validate_items 之前分派，而不是在它之后再放宽。
+        strategy = self._strategy(profile)
+        if strategy is not None:
+            return strategy.run(items, enforce_api_limits=enforce_api_limits)
+
+        limit = min(self.settings.max_samples, profile.max_samples) if enforce_api_limits else None
         validate_items(items, maximum=limit)
         # 参数校验会返回可调用的算法函数，顺带复用它，避免重复解析
         clusterer = validate_params(profile.algorithm, profile.algorithm_params, profile.backend)

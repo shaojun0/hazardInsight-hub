@@ -4,6 +4,7 @@ import pytest
 from retrain_cluster.clustering import (
     ALGORITHMS,
     API_ALGORITHMS,
+    SEMANTIC_ALGORITHMS,
     WARNINGS,
     available,
     get_clusterer,
@@ -15,8 +16,16 @@ from retrain_cluster.optimization.search_spaces import SPACES
 AGG = {"distance_threshold": 0.5}
 
 
-def test_search_spaces_cover_every_registered_algorithm():
-    assert set(SPACES) == set(ALGORITHMS)
+def test_search_spaces_cover_every_legacy_algorithm():
+    """optuna 搜索空间必须覆盖全部 legacy 算法。
+
+    semantic-v1 刻意**不在**其中：它的决策阈值（t_sem / t_pair / …）必须来自
+    校准文件，不允许写进 profile，而调优产物最终要落成 profile 参数——
+    因此给它一个搜索空间会和 ``validate_semantic_params`` 直接冲突。
+    这条断言同时守住"新增 legacy 算法忘了加搜索空间"这个老问题。
+    """
+
+    assert set(SPACES) == set(ALGORITHMS) - set(SEMANTIC_ALGORITHMS)
 
 
 def test_mean_shift_is_cli_only():
@@ -25,8 +34,15 @@ def test_mean_shift_is_cli_only():
     assert len(API_ALGORITHMS) == len(ALGORITHMS) - 1
 
 
-def test_only_chinese_whispers_is_flagged():
-    assert set(WARNINGS) == {"chinese_whispers"}
+def test_warnings_only_cover_known_algorithms():
+    """WARNINGS 的键必须都注册过算法，且当前集合是有意为之。
+
+    前半句防的是"改了算法名忘了改告警"（会静默丢失告警）；
+    后半句让新增告警必须显式改这里，避免顺手加了一条没人知道的提示。
+    """
+
+    assert set(WARNINGS) <= set(ALGORITHMS)
+    assert set(WARNINGS) == {"chinese_whispers", "semantic_auto_kmeans"}
 
 
 def test_unknown_algorithm_is_unavailable():

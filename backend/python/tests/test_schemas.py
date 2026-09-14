@@ -65,11 +65,21 @@ def test_request_rejects_unknown_field():
         DatasetItem.model_validate({"id": "a", "text": "t", "texts": "typo"})
 
 
-def test_request_requires_at_least_two_items():
-    """聚类至少需要 2 条样本，单条样本没有聚类的意义。"""
+def test_request_requires_at_least_one_item():
+    """契约层只挡住空列表。
+
+    「至少 2 条」不再是契约级约束：`semantic-v1` 明确支持单条（返回
+    ``autoKStatus=singleton`` 并如实标注低支持），而 `legacy-v1` 仍然要求 ≥2 条。
+    版本相关的准入规则由网关在解析出 profile 之后执行
+    （`ClusteringGatewayService.run` → `validate_item_count(minimum=...)`），
+    因此这里只验证「0 条必拒、1 条可解析」这两件与版本无关的事。
+    """
 
     with pytest.raises(ValidationError):
-        ClusteringRunRequest.model_validate({"items": [{"id": "a", "text": "只有一条"}]})
+        ClusteringRunRequest.model_validate({"items": []})
+
+    single = ClusteringRunRequest.model_validate({"items": [{"id": "a", "text": "只有一条"}]})
+    assert len(single.items) == 1
 
 
 def test_item_requires_non_empty_text():

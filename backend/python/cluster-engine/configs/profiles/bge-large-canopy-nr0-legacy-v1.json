@@ -20,5 +20,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/CanopyOptimizer_0_0_best_param.json",
   "source_sha256": "e5d4d5aac868146d0125798a94b5f79183257fb3da232e4251f567f51aacd6eb",
-  "max_samples": 500
+  "max_samples": 300000
 }

@@ -23,11 +23,49 @@ ALGORITHMS = {
     "leader": ("leader", "fit_predict", "sklearn"),
     "canopy": ("canopy", "fit_predict", "sklearn"),
     "mean_shift": ("mean_shift", "fit_predict", "sklearn"),
+    # semantic-v1：中文语义 Embedding + 有界 Auto-K + MiniBatchKMeans + 原空间后处理。
+    # 它同样满足 fit_predict(X, **params) -> labels 的矩阵契约，但线上入口走
+    # SemanticAutoKMeansStrategy（文本级去重/缓存/命名不在矩阵函数里）。
+    "semantic_auto_kmeans": ("semantic_auto", "fit_predict", "sklearn"),
 }
 # mean_shift 只在 CLI 暴露、不走 API（见 docs/architecture.md 的口径说明）
 API_ALGORITHMS = tuple(name for name in ALGORITHMS if name != "mean_shift")
+# 需要实现版本 semantic-v1 才能使用的算法集合
+SEMANTIC_ALGORITHMS = tuple(name for name in ALGORITHMS if name.startswith("semantic_"))
 # 需要随结果一并返回给调用方的行为告警
-WARNINGS = {"chinese_whispers": ["LEGACY_CW_LABEL_MAPPING", "UNSEEDED_LEGACY_ALGORITHM"]}
+WARNINGS = {
+    "chinese_whispers": ["LEGACY_CW_LABEL_MAPPING", "UNSEEDED_LEGACY_ALGORITHM"],
+    "semantic_auto_kmeans": [
+        "AUTO_K_NO_UNIQUE_TRUTH",
+        "AUTO_K_SAMPLING_MAY_MISS_RARE_TOPICS",
+    ],
+}
+
+#: semantic-v1 的预算类参数白名单：``参数名 -> (下界, 上界)``，全部为整数。
+SEMANTIC_INTEGER_RULES = {
+    "k_cap": (2, 4096),
+    "sample_size": (16, 200_000),
+    "validation_size": (1, 200_000),
+    "max_iter": (1, 10_000),
+    "batch_size": (1, 100_000),
+    "n_init": (1, 50),
+    "pca_dim": (0, 4096),
+    "pca_min_samples": (2, 1_000_000),
+    "min_cluster_unique": (1, 1000),
+    "split_budget": (0, 64),
+    "merge_rounds": (0, 8),
+    "refine_rounds": (0, 8),
+    "seed": (0, 2**31),
+}
+
+#: semantic-v1 的浮点预算参数白名单（阈值类参数**不在此列**，见下方说明）。
+SEMANTIC_FLOAT_RULES = {
+    "sample_weight_cap": (0.0, 100.0),
+}
+
+#: 阈值类参数的键名。它们必须来自 ``semantic-calibration-v1.json``，
+#: 不允许写在 profile 的 algorithm_params 里——否则"同一份校准"会随 profile 漂移。
+SEMANTIC_CALIBRATION_KEYS = frozenset({"t_sem", "t_pair", "t_merge", "t_margin", "t_single"})
 
 
 def available(algorithm):
@@ -55,13 +93,52 @@ def get_clusterer(algorithm, backend="python"):
     return getattr(import_module(f"{__package__}.{module}"), function)
 
 
+def validate_semantic_params(algorithm, params):
+    """semantic-v1 的专属参数校验。
+
+    与 legacy 分支的最大区别是**分区明确**：这里只接受预算类参数，
+    任何阈值参数都会被明确拒绝并提示"阈值属于校准配置"。这样
+    "同一份校准"就不会因为某个 profile 顺手写了个 ``t_sem`` 而悄悄漂移。
+    """
+
+    for key, value in params.items():
+        if key in SEMANTIC_CALIBRATION_KEYS:
+            raise ClusterError(
+                "INVALID_PROFILE",
+                f"Calibration threshold '{key}' must live in the calibration file, not in profile parameters",
+                422,
+            )
+        if key in SEMANTIC_INTEGER_RULES:
+            low, high = SEMANTIC_INTEGER_RULES[key]
+            if type(value) is not int or not low <= value <= high:
+                raise ClusterError("INVALID_PROFILE", f"Parameter '{key}' violates the semantic budget contract", 422)
+            continue
+        if key in SEMANTIC_FLOAT_RULES:
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise ClusterError("INVALID_PROFILE", f"Parameter '{key}' must be a finite number", 422)
+            low, high = SEMANTIC_FLOAT_RULES[key]
+            if not low <= float(value) <= high:
+                raise ClusterError("INVALID_PROFILE", f"Parameter '{key}' is out of range", 422)
+            continue
+        raise ClusterError(
+            "INVALID_PROFILE", f"Parameter '{key}' is not a semantic-v1 budget parameter", 422
+        )
+    # 跨字段约束：验证集不能比抽样集还大，PCA 目标维度不能超过拟合样本数
+    sample_size = params.get("sample_size")
+    validation_size = params.get("validation_size")
+    if sample_size is not None and validation_size is not None and validation_size > sample_size:
+        raise ClusterError("INVALID_PROFILE", "validation_size must not exceed sample_size", 422)
+    return algorithm
+
+
 def validate_params(algorithm, params, backend="python"):
     """在真正执行前校验超参，返回实现函数供调用方复用。
 
     校验分三层：
       1. 签名匹配——参数名/必填项必须与实现一致（``inspect.signature().bind``）；
       2. 通用取值范围——正数参数必须 > 0，计数参数必须为达标整数；
-      3. 算法特有约束——如 AP 的 damping、OPTICS 的 min_cluster_size、Canopy 的 t1 > t2。
+      3. 算法特有约束——如 AP 的 damping、OPTICS 的 min_cluster_size、Canopy 的 t1 > t2；
+         semantic-v1 的算法额外走 ``validate_semantic_params`` 的预算白名单。
 
     任何一项不满足都统一收敛为 ``INVALID_PROFILE``（422），不泄漏内部异常类型。
     """
@@ -71,6 +148,9 @@ def validate_params(algorithm, params, backend="python"):
         inspect.signature(function).bind(None, **params)
     except TypeError:
         raise ClusterError("INVALID_PROFILE", "Algorithm parameter names are incomplete or invalid", 422) from None
+    if algorithm in SEMANTIC_ALGORITHMS:
+        validate_semantic_params(algorithm, params)
+        return function
     # 必须严格为正数的参数
     positive = {"distance_threshold", "eps", "threshold", "t1", "t2", "bandwidth", "alpha"}
     # 必须是整数且不小于给定下界的参数

@@ -31,8 +31,10 @@ async def ready(request: Request):
 
 
 @router.get("/api/v1/algorithms")
-def algorithms():
+def algorithms(request: Request):
     """列出算法及其在当前环境的可用性（依赖是否已安装）。"""
+    # max_samples 取服务级配置，而非写死常量，避免与 app.toml 脱节
+    limit = request.app.state.settings.max_samples
     return {
         "algorithms": [
             {
@@ -40,7 +42,7 @@ def algorithms():
                 "available": available(name),
                 "backend": "python",
                 "implementation_version": "legacy-v1",
-                "max_samples": 500,
+                "max_samples": limit,
                 "warnings": WARNINGS.get(name, []),
             }
             for name in API_ALGORITHMS
@@ -91,7 +93,7 @@ def profiles(request: Request):
                 "algorithm_params": profile.algorithm_params,
                 "compatibility_status": profile.compatibility_status,
                 "implementation_version": profile.implementation_version,
-                "max_samples": min(500, catalog.settings.max_samples, profile.max_samples),
+                "max_samples": min(catalog.settings.max_samples, profile.max_samples),
                 "available": ok,
                 "unavailable_reason": reason,
                 "warnings": WARNINGS.get(profile.algorithm, []),

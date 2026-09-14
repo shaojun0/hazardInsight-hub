@@ -64,6 +64,7 @@ npm install
 | --- | --- | --- |
 | `npm run dev` | Node API + Vite 前端 | 3001 + 5175 |
 | `npm run dev:all` | Node API + Vite + Python 聚类服务 | 3001 + 5175 + 8000 |
+| `npm run dev:linux` | Linux 开发启动全部服务，前端支持局域网访问 | 3001 + 5175 + 8000 |
 | `npm run dev:api` | 仅 Node API | 3001 |
 | `npm run dev:web` | 仅 Vite 前端 | 5175 |
 | `npm run dev:py` | 仅 Python 聚类服务 | 8000 |
@@ -84,6 +85,37 @@ npm run dev
 1. 点击「使用演示样例」载入任意一张内置演示图，或上传本地 JPG/JPEG/PNG/WebP 图片；
 2. 点击「**AI 智能识别**」；
 3. 查看识别结果、绘制标注、修改等级与整改建议、导出报告。
+
+#### Linux 源码启动
+
+需要 Node.js ≥20.19.0、Python 3.12。以下命令均在项目根目录执行；首次部署安装依赖：
+
+```bash
+npm ci
+python3.12 -m venv backend/python/.venv
+(cd backend/python && .venv/bin/python -m pip install -r requirements.txt)
+```
+
+Linux 需要自己的虚拟环境，不能复用 Windows 的 `.venv/Scripts`。聚类使用的本地模型还需按 3.4 节准备，启动命令不会自动下载模型。
+
+```bash
+# 开发模式：前端 + Node API + Python 聚类服务
+npm run dev:linux
+# 浏览器访问 http://localhost:5175 或 http://<Linux主机IP>:5175
+```
+
+开发前端监听 `0.0.0.0:5175`，Python 默认监听 `127.0.0.1:8000`，浏览器通过前端代理调用聚类接口。按 Ctrl+C 停止整组服务；已有服务占用这些端口时，先停止原有启动命令。
+
+```bash
+# 生产模式：先构建，再启动静态页面/API 和 Python 聚类服务
+npm run build
+npm run start:linux
+# 浏览器访问 http://<Linux主机IP>:3001
+```
+
+两种命令均以前台进程运行。若使用独立 Python 环境，可指定解释器，例如 `PY_CLUSTER_PYTHON=/opt/hazard-venv/bin/python npm run dev:linux`；也支持 PATH 中的命令名，如 `python3.12`。未设置时自动选择 `backend/python/.venv/bin/python`，无需手动 activate。
+
+已有完整离线 Docker 演示包的 Linux 机器，可在演示包目录执行 `bash start.sh`；其镜像归档需由 `deploy/demo-v4/package.ps1` 打包生成，仅克隆源码不包含该归档。
 
 ### 3.4 启用聚类分析（可选，独立 Python 服务）
 
@@ -180,11 +212,13 @@ docker run -d -p 3001:3001 \
 | --- | --- |
 | `npm run dev` | Node API(3001) + Vite(5175) |
 | `npm run dev:all` | 追加 Python 聚类服务(8000) |
+| `npm run dev:linux` | Linux 开发：三服务一起启动，Vite 监听 0.0.0.0:5175 |
 | `npm run dev:api` | 仅 Node API（`tsx server/index.ts`） |
 | `npm run dev:web` | 仅 Vite 前端 |
 | `npm run dev:py` | 仅 Python 聚类服务 |
 | `npm run build` | `tsc --noEmit` + `vite build` → `dist/` |
 | `npm start` | 生产模式启动（`NODE_ENV=production`） |
+| `npm run start:linux` | Linux 生产：已构建页面/API + Python 聚类服务（先运行 build） |
 | `npm run preview` | Vite 预览已构建产物（不经过 Express） |
 
 **检查与测试**
@@ -209,7 +243,7 @@ node scripts/clustering/py.mjs test     # 运行 pytest
 node scripts/clustering/py.mjs <args>   # 其余参数原样透传给该解释器
 ```
 
-解释器查找顺序：`PY_CLUSTER_PYTHON` 环境变量 → `backend/python/.venv/Scripts/python.exe` → `backend/python/.venv/bin/python` → PATH 中的 `python3`。
+解释器查找顺序：`PY_CLUSTER_PYTHON` 环境变量（绝对路径或 PATH 命令名）→ 当前平台的项目虚拟环境（Windows 为 `backend/python/.venv/Scripts/python.exe`，Linux/macOS 为 `backend/python/.venv/bin/python`）→ PATH 中的 `python3`。显式指定的解释器不可用时会直接报错，不静默换环境。
 
 **`scripts/grading/`** —— 定级质量评估工具链。多为一次性/离线分析脚本，依赖 `.tmp/grading-evaluation/` 下的中间产物（该目录已 gitignore），需要先跑前置步骤才会有数据：
 
@@ -425,7 +459,8 @@ web/pages/Clustering*.tsx
 - 所有接口返回统一包裹 `{ success, data, error }`；失败时 `error` 含 `code`（如 `UNSUPPORTED_FILE`、`PROFILE_UNAVAILABLE`、`SERVICE_BUSY`、`CLUSTERING_TIMEOUT`）与面向用户的中文 `message`，前端只需一套错误分支；
 - Python 内部字段为 snake_case，对外统一序列化为 camelCase（Pydantic `alias_generator`），与 `shared/clustering.ts` 逐字段一致，前端不做任何键名转换；
 - 网关为**单飞**模式：同一时刻只允许一个聚类请求进入引擎，其余请求返回 429，避免 CPU/内存被打满；
-- 数据上限：单次 ≤ 500 条样本、单条文本 ≤ 4000 字符、上传文件 ≤ 10 MB；聚类墙钟超时默认 120 秒。
+- 数据上限：单次 ≤ 30 万条样本、单条文本 ≤ 4000 字符、上传文件 ≤ 200 MB；聚类墙钟超时默认 3600 秒。
+  - 注意：**放开个数限制不等于所有算法都能跑满**。层次聚类（agglomerative / affinity_propagation）是 O(n²) 时空复杂度，30 万条会内存溢出；实际能吃满量级的是 dbscan / hdbscan / birch / leader / canopy 等线性或近线性算法。
 
 ### 5. 运行与测试
 

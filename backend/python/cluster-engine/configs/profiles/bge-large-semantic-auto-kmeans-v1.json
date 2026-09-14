@@ -1,0 +1,33 @@
+{
+  "profile_id": "bge-large-semantic-auto-kmeans-v1",
+  "algorithm": "semantic_auto_kmeans",
+  "model_id": "bge-large-zh-v1.5",
+  "algorithm_params": {
+    "k_cap": 256,
+    "seed": 42,
+    "sample_size": 8192,
+    "validation_size": 2048,
+    "max_iter": 100,
+    "batch_size": 1024,
+    "n_init": 3,
+    "pca_dim": 64,
+    "pca_min_samples": 2000,
+    "min_cluster_unique": 5,
+    "split_budget": 8,
+    "merge_rounds": 2,
+    "refine_rounds": 2
+  },
+  "features": {
+    "beta": 1.0,
+    "n_results": 0,
+    "pca_dim": 0,
+    "reduction": "PCA",
+    "version": "semantic-v1"
+  },
+  "knowledge_base_id": null,
+  "implementation_version": "semantic-v1",
+  "backend": "python",
+  "compatibility_status": "semantic",
+  "calibration_id": "semantic-calibration-v1",
+  "max_samples": 300000
+}

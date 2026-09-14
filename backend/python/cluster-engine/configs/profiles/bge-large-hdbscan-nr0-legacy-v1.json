@@ -20,5 +20,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/HDBSCANOptimizer_0_0_best_param.json",
   "source_sha256": "00503fa800d2a4042563df850491acfd7a0587bdce4724190814b8067793a6c1",
-  "max_samples": 500
+  "max_samples": 300000
 }

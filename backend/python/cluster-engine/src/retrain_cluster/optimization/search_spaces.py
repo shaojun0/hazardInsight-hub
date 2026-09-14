@@ -199,7 +199,13 @@ def mean_shift(trial, *, n_results=-1, pca_dim=0):
     }
 
 
-# 算法名 -> 搜索空间函数；与 clustering.registry.ALGORITHMS 的键保持一致
+# 算法名 -> 搜索空间函数；与 clustering.registry.ALGORITHMS 的键保持一致。
+#
+# 例外：``semantic_auto_kmeans`` **刻意没有**搜索空间。它的决策阈值
+# （t_sem / t_pair / t_merge / t_margin / t_single）必须来自校准文件，
+# registry.validate_semantic_params 明确拒绝把它们写进 profile，
+# 而调优产物最终要落成 profile 参数——给它搜索空间会在写回时被直接拒绝。
+# 因此 semantic-v1 的可调项是它自己的校准配置，不是 optuna 搜索空间。
 SPACES = {
     "agglomerative": agglomerative,
     "hdbscan": hdbscan,

@@ -20,5 +20,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/DBSCANOptimizer_0_0_best_param.json",
   "source_sha256": "7750fd4b272ac262eb180baed307ca80c92c47a0e616e63d274063aa8ba0c953",
-  "max_samples": 500
+  "max_samples": 300000
 }

@@ -14,7 +14,14 @@ import type {
   ClusteringData,
   ClusteringDatasetItem,
   ClusteringDatasetPreview,
+  ClusteringDatasetReference,
   ClusteringHealthData,
+  ClusteringJobFilterOptions,
+  ClusteringJobInfo,
+  ClusteringJobItemsPage,
+  ClusteringJobResultData,
+  ClusteringJobStatus,
+  ClusteringJobSubmitOptions,
   ClusteringProfileInfo,
   ClusteringRunOptions,
   ClusteringSampleData,
@@ -104,3 +111,85 @@ export function runClustering(items: ClusteringDatasetItem[], options: Clusterin
     body: JSON.stringify({ items, options }),
   });
 }
+
+/* ------------------------------------------------------------------ 异步作业 */
+
+/**
+ * 提交异步聚类作业。
+ *
+ * 与 `runClustering` 的分工：样本多的时候必须走这条。它只做准入与入队就返回，
+ * HTTP 请求不会被挂在一次几十分钟的计算上；后续用 `fetchClusteringJob` 轮询，
+ * 用 `fetchClusteringJobItems` 分页取明细（不必下载全量），用 `cancelClusteringJob` 停掉。
+ *
+ * `items` 与 `options.datasetId` 二选一：按引用提交时请求体里只有一个 ID。
+ */
+export function submitClusteringJob(
+  items: ClusteringDatasetItem[],
+  options: ClusteringJobSubmitOptions = {},
+) {
+  const { idempotencyKey, ...rest } = options;
+  // 幂等键同时放头部与 body：代理层可能丢掉自定义头，而 body 一定到得了服务端。
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
+  return request<ClusteringJobInfo>('/jobs', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ items, options: rest }),
+  });
+}
+
+/** 查询作业状态（轮询用；`terminal=true` 时应停止轮询）。 */
+export const fetchClusteringJob = (jobId: string) =>
+  request<ClusteringJobInfo>(`/jobs/${encodeURIComponent(jobId)}`);
+
+/** 列出作业（新→旧）。 */
+export const fetchClusteringJobs = (limit = 20, status?: ClusteringJobStatus) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (status) params.set('status', status);
+  return request<{ jobs: ClusteringJobInfo[] }>(`/jobs?${params.toString()}`).then(
+    (data) => data.jobs,
+  );
+};
+
+/** 取消作业：排队中的直接出队，执行中的杀掉执行子进程。 */
+export const cancelClusteringJob = (jobId: string) =>
+  request<ClusteringJobInfo>(`/jobs/${encodeURIComponent(jobId)}/cancel`, { method: 'POST' });
+
+/** 读取作业结果摘要（统计 / 簇 / 抽样坐标，不含明细）。 */
+export const fetchClusteringJobResult = (jobId: string) =>
+  request<ClusteringJobResultData>(`/jobs/${encodeURIComponent(jobId)}/result`);
+
+/** 读取明细筛选取值（可见的簇及各自条数）。 */
+export const fetchClusteringJobFilters = (jobId: string) =>
+  request<ClusteringJobFilterOptions>(`/jobs/${encodeURIComponent(jobId)}/filters`);
+
+/** 服务端分页读取明细。 */
+export function fetchClusteringJobItems(
+  jobId: string,
+  query: {
+    offset?: number;
+    limit?: number;
+    clusterId?: number | null;
+    assignmentStatus?: string | null;
+    keyword?: string | null;
+  } = {},
+) {
+  const params = new URLSearchParams();
+  if (query.offset !== undefined) params.set('offset', String(query.offset));
+  if (query.limit !== undefined) params.set('limit', String(query.limit));
+  if (query.clusterId !== undefined && query.clusterId !== null) {
+    params.set('clusterId', String(query.clusterId));
+  }
+  if (query.assignmentStatus) params.set('assignmentStatus', query.assignmentStatus);
+  if (query.keyword) params.set('keyword', query.keyword);
+  const suffix = params.toString();
+  return request<ClusteringJobItemsPage>(
+    `/jobs/${encodeURIComponent(jobId)}/items${suffix ? `?${suffix}` : ''}`,
+  );
+}
+
+/** 列出已保存的数据集引用。 */
+export const fetchClusteringDatasets = (limit = 20) =>
+  request<{ datasets: ClusteringDatasetReference[] }>(`/datasets?limit=${limit}`).then(
+    (data) => data.datasets,
+  );

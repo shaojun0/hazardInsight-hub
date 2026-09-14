@@ -22,6 +22,24 @@ from app.main import create_app
 pytestmark = pytest.mark.integration
 
 
+def test_semantic_sample_discovers_multiple_topics(client: TestClient):
+    """The real 50-row demo must not lose every topic at the Auto-K holdout gate."""
+    items = client.get("/api/clustering/sample").json()["data"]["items"]
+    response = client.post(
+        "/api/clustering/run",
+        json={"items": items, "options": {
+            "profileId": "bge-large-semantic-auto-kmeans-v1", "visualize": False,
+        }},
+    )
+    assert response.status_code == 200, response.text
+    data = response.json()["data"]
+    assert data["summary"]["clusterCount"] >= 2
+    assert data["summary"]["noiseCount"] < len(items)
+    assert len(data["items"]) == len(items)
+    assert {item["id"] for item in data["items"]} == {item["id"] for item in items}
+    assert sum(group["size"] for group in data["clusters"]) == len(items)
+
+
 @pytest.fixture(scope="module")
 def client() -> TestClient:
     """构建应用并预热引擎（模块级复用，避免重复加载 1.3GB 模型）。"""

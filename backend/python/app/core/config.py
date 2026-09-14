@@ -41,14 +41,48 @@ class GatewaySettings(BaseSettings):
     default_profile_id: str | None = None
 
     #: 单次聚类请求的墙钟超时（秒）。超过则向前端返回 504。
-    timeout_seconds: float = 120.0
+    #: 放到 1 小时：30 万条样本的向量化 + 聚类远超 120 秒。
+    #: 需与 cluster-engine 的 `app.toml:timeout_seconds` 保持一致，否则网关会先中止等待。
+    timeout_seconds: float = 3600.0
 
-    #: 上传数据文件大小上限（字节）。
-    upload_max_bytes: int = 10 * 1024 * 1024
+    #: 上传数据文件大小上限（字节）。200 MiB，与引擎的 max_body_bytes 对齐。
+    upload_max_bytes: int = 200 * 1024 * 1024
 
     #: 簇摘要（展示辅助）配置。
     digest_top_keywords: int = 6
     digest_representatives: int = 3
+
+    # ------------------------------------------------------------------ 异步作业
+
+    #: 作业与数据集的产物根目录（相对 backend/python 解析）。
+    #:
+    #: 与 cluster-engine 的 `artifacts/` 分开：引擎存的是"这次计算算出了什么"，
+    #: 这里存的是"调用方提交的任务与它的展示态明细"，生命周期也不同
+    #: （作业可以被取消并整体清理，引擎结果不该被任务状态牵着走）。
+    job_store: Path = Field(default=Path("artifacts") / "clustering")
+
+    #: 排队中 + 执行中的作业上限，超出即 429。
+    #: 不是"越大越好"：每个作业最终都要占一份模型内存，队列长度只是把 OOM
+    #: 从"立刻拒绝"推迟成"跑一半崩掉"。
+    job_max_pending: int = 8
+
+    #: 同时执行的作业数。聚类是 CPU/内存密集型，默认串行。
+    #: 需要并行请显式调大，并同步评估模型内存 × 并发数。
+    job_max_concurrent: int = 1
+
+    #: 作业结果分页的默认页大小（前端可不传 limit 直接用这个值）。
+    job_page_size: int = 100
+
+    #: 保留的历史作业数（按创建时间倒序）。超出后清理最旧的**终态**作业，
+    #: 活跃作业永远不清理——否则会把正在跑的任务目录删掉。
+    job_history_limit: int = 50
+
+    #: 单个数据集引用允许保留的样本数上限。
+    dataset_max_items: int = 300_000
+
+    #: 保留的数据集引用数量；超出后清理最旧的（不影响已提交的作业，
+    #: 因为作业在提交时就把样本快照落盘了）。
+    dataset_history_limit: int = 20
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -78,6 +112,12 @@ class GatewaySettings(BaseSettings):
         """内置示例数据文件绝对路径。"""
 
         return self.resolve_path(self.sample_dataset)
+
+    @property
+    def job_store_path(self) -> Path:
+        """作业与数据集产物的绝对根目录。"""
+
+        return self.resolve_path(self.job_store)
 
 
 @lru_cache

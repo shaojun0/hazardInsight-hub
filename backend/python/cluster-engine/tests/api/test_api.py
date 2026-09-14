@@ -2,6 +2,8 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 from retrain_cluster.api.app import create_app
+from retrain_cluster.clustering import API_ALGORITHMS
+from retrain_cluster.config import Settings
 from retrain_cluster.services.clustering import ClusteringService
 from retrain_cluster.errors import ClusterError
 from tests.conftest import ALGORITHM_CASES, FixedRegistry
@@ -47,7 +49,8 @@ def test_success_location_result_and_health(api):
     assert client.get(response.headers["Location"]).json() == response.json()
     assert client.get("/health/live").status_code == 200
     assert client.get("/health/ready").status_code == 200
-    assert len(client.get("/api/v1/algorithms").json()["algorithms"]) == 10
+    # 算法清单长度从注册表派生：写死常量会让"新增一个 API 算法"变成一次无声的测试失败
+    assert len(client.get("/api/v1/algorithms").json()["algorithms"]) == len(API_ALGORITHMS)
     assert client.get("/api/v1/clusterings/missing").status_code == 404
     assert response.headers["x-request-id"]
 
@@ -73,12 +76,21 @@ def test_request_validation(api, change):
     assert response.json()["error"]["request_id"]
 
 
-def test_missing_profile_and_body_limit(api):
+def test_missing_profile_and_body_limit(api, settings):
     client, _ = api
     request = body()
     request["profile_id"] = "missing"
     assert client.post("/api/v1/clusterings", json=request).status_code == 404
-    response = client.post("/api/v1/clusterings", content=b" " * (2 * 1024 * 1024 + 1))
+
+    # 体积上限从配置派生，而不是写死 2 MiB：生产默认已是 200 MiB，
+    # 写死字节数会让这条断言随配置变更悄悄失去意义（既可能失效，也可能变成 200 MB 上传）。
+    # 这里用 Settings.load 的 overrides 派生一份"上限很小"的配置，代价只有几百字节。
+    tiny = Settings.load(settings.config_path, overrides={"max_body_bytes": 1024})
+    small_client = TestClient(
+        create_app(settings=tiny, executor=InlineExecutor(ClusteringService(tiny, encoders=FixedRegistry())))
+    )
+    with small_client as small:
+        response = small.post("/api/v1/clusterings", content=b" " * 2048)
     assert response.status_code == 413
     assert response.json()["error"]["code"] == "REQUEST_TOO_LARGE"
 

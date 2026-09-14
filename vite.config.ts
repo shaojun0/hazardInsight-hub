@@ -18,6 +18,11 @@ export default defineConfig({
       '/api/clustering': {
         target: PY_CLUSTER_TARGET,
         changeOrigin: true,
+        // 30 万条样本的聚类可能跑很久，默认代理超时会中途断开连接。
+        // 这里与后端 timeout_seconds(3600s) 对齐。
+        // 请求体大小无需在此限制：http-proxy 默认流式转发，不设上限。
+        timeout: 3_600_000,
+        proxyTimeout: 3_600_000,
       },
       '/api': {
         target: 'http://127.0.0.1:3001',

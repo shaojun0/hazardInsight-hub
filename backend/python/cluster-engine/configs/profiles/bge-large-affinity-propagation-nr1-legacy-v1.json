@@ -19,5 +19,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/AffinityPropagationOptimizer_-1_0_best_param.json",
   "source_sha256": "796dcf639b0e9fd947c417aca1ca8dd65d24bb1ac5444232d779aa58477b6f16",
-  "max_samples": 500
+  "max_samples": 300000
 }

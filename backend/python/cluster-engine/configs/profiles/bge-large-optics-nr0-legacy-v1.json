@@ -20,5 +20,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/OpticsOptimizer_0_0_best_param.json",
   "source_sha256": "db265776f616c25821d34c85e41423cf153e0c0dcf7f96db6754d298a92419f8",
-  "max_samples": 500
+  "max_samples": 300000
 }

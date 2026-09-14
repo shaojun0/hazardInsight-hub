@@ -19,5 +19,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/BirchOptimizer_0_0_best_param.json",
   "source_sha256": "a19cf968ae502173571298c30feb2a87d49f1b945bdd81ec49f443e3377bce9d",
-  "max_samples": 500
+  "max_samples": 300000
 }

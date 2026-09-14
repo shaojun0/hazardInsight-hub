@@ -20,14 +20,13 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..', '..');
 const backendDir = join(root, 'backend', 'python');
 
-/** 候选解释器路径：优先项目虚拟环境，其次环境变量、最后 PATH 中的 python。 */
-const candidates = [
-  process.env.PY_CLUSTER_PYTHON,
-  join(backendDir, '.venv', 'Scripts', 'python.exe'),
-  join(backendDir, '.venv', 'bin', 'python'),
-].filter(Boolean);
-
-const interpreter = candidates.find((item) => existsSync(item)) ?? 'python3';
+/** 显式覆盖优先；只探测当前平台的虚拟环境，避免跨系统复制后误用另一端的解释器。 */
+const virtualPython = process.platform === 'win32'
+  ? join(backendDir, '.venv', 'Scripts', 'python.exe')
+  : join(backendDir, '.venv', 'bin', 'python');
+const overridePython = process.env.PY_CLUSTER_PYTHON?.trim();
+// 覆盖值也可以是 PATH 中的命令（如 python3.12），不存在时由 spawn 明确报错。
+const interpreter = overridePython || (existsSync(virtualPython) ? virtualPython : 'python3');
 
 const [command, ...rest] = process.argv.slice(2);
 let args;
@@ -45,7 +44,7 @@ if (command === 'serve') {
   args = [command, ...rest].filter((item) => item !== undefined);
 }
 
-if (command === 'serve' && interpreter === 'python3') {
+if (command === 'serve' && !overridePython && !existsSync(virtualPython)) {
   console.warn('[clustering] 未找到 backend/python/.venv，将使用 PATH 中的 python3。');
   console.warn('[clustering] 首次使用请先执行：cd backend/python && python -m venv .venv && pip install -r requirements.txt');
 }

@@ -2,10 +2,17 @@
 models_file = "models.toml"
 profiles_dir = "profiles"
 artifacts_dir = "../artifacts"
-max_samples = 500
+# semantic-v1 的阈值/权重校准配置（相对本文件所在目录解析）。
+# 缺失时 legacy 流程照常工作，只有引用它的 semantic profile 会在加载阶段失败。
+calibration_file = "semantic-calibration-v1.json"
+# 单次请求样本上限：放到 30 万条（全量数据级）。
+# 注意 O(n²) 算法（agglomerative / affinity_propagation）在这个量级会 OOM。
+max_samples = 300000
 max_text_length = 4000
-max_body_bytes = 2097152
-timeout_seconds = 60.0
+# 200 MiB：30 万条文本的请求体可达数百 MB，2 MiB 的老限制会把请求挡在门外。
+max_body_bytes = 209715200
+# 1 小时：30 万条的向量化 + 聚类远超 60 秒。
+timeout_seconds = 3600.0
 query_batch = 64
 host = "127.0.0.1"
 port = 8000

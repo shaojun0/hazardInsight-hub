@@ -85,6 +85,31 @@ class SyncExecutor:
                     return False
             return self._ready
 
+    def interrupt(self):
+        """硬取消：杀掉正在执行请求的子进程，让阻塞中的 `execute` 立刻退出。
+
+        为什么必须是"杀进程"而不是设个标志位：聚类跑的是 numpy/sklearn 的紧循环，
+        Python 层没有安全的抢占点；线程又无法被强制结束。只有进程边界能保证
+        "停止任务后资源真的被释放"——这也是本模块一开始就独立进程的理由。
+
+        这里**只杀进程、不动连接对象**：`execute` 里已有的 EOF/OSError 分支会统一
+        收尾并重启子进程。两个线程同时 cleanup 同一个句柄只会制造更难查的错。
+
+        返回是否真的杀掉了一个活着的子进程（空闲时取消即返回 False）。
+        """
+
+        with self.state_lock:
+            process = self.process
+            if process is None or not process.is_alive():
+                return False
+            process.terminate()
+            process.join(timeout=2)
+            if process.is_alive():
+                process.kill()  # terminate 不生效时强杀
+                process.join(timeout=2)
+            self._ready = False
+            return True
+
     def close(self):
         """优雅关停：terminate -> 等待 -> 必要时 kill，然后释放全部句柄。"""
         with self.state_lock:

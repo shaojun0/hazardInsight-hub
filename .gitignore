@@ -9,6 +9,10 @@ dist/
 .runtime-model.json
 .rules-imported.json
 
+# 编辑器/IDE 本地配置
+.idea/
+.vscode/
+
 # Python 聚类服务
 __pycache__/
 *.py[cod]
@@ -23,6 +27,9 @@ backend/python/cluster-engine/models/
 
 # 聚类运行时产物
 backend/python/cluster-engine/artifacts/
+
+# 网关侧作业与数据集产物（作业记录、分片明细、数据集快照）
+backend/python/artifacts/
 
 # 智能体工作目录（本地记忆/日志）
 .workbuddy/

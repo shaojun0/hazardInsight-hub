@@ -25,6 +25,10 @@ export interface CreateAppOptions {
 export function createApp(options: CreateAppOptions = {}): express.Express {
   const app = express();
   app.disable('x-powered-by');
+  // 聚类请求体可能承载数十万条样本，需要远高于默认的上限。
+  // 只对 /api/clustering/* 放宽，其余接口仍维持 10 MB，避免无谓地放松其他入口的防护。
+  const clusteringJson = express.json({ limit: '200mb' });
+  app.use('/api/clustering', clusteringJson);
   app.use(express.json({ limit: '10mb' }));
 
   // 知识库检索器为各路由共享的进程内单例

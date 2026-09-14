@@ -10,7 +10,7 @@ import os
 from pathlib import Path
 import tomllib
 from .errors import ClusterError
-from .types import ResolvedPipelineConfig
+from .types import ResolvedPipelineConfig, SemanticCalibration
 from .artifacts.fingerprints import fingerprint, file_hash
 
 
@@ -31,13 +31,16 @@ class Settings:
     models_file: Path
     profiles_dir: Path
     artifacts_dir: Path
-    max_samples: int = 500  # 单次请求最大样本数
+    # 默认值与 configs/app.toml 保持一致（30 万条 / 200 MiB / 1 小时）
+    max_samples: int = 300_000  # 单次请求最大样本数
     max_text_length: int = 4000  # 单条文本最大字符数
-    max_body_bytes: int = 2 * 1024 * 1024  # 请求体最大字节数（2 MiB）
-    timeout_seconds: float = 60.0  # 单次聚类执行超时
+    max_body_bytes: int = 200 * 1024 * 1024  # 请求体最大字节数（200 MiB）
+    timeout_seconds: float = 3600.0  # 单次聚类执行超时
     host: str = "127.0.0.1"
     port: int = 8000
     query_batch: int = 64  # 检索分批大小
+    #: semantic-v1 的校准配置（阈值/权重），相对配置文件所在目录解析。
+    calibration_file: Path | None = None
     # 实验（调参）默认参数
     experiment: dict = field(default_factory=lambda: {"n_trials": 200, "n_jobs": 8, "seed": 42, "startup_trials": 15})
 
@@ -71,6 +74,7 @@ class Settings:
                 ("models_file", "models.toml"),
                 ("profiles_dir", "profiles"),
                 ("artifacts_dir", "../artifacts"),
+                ("calibration_file", "semantic-calibration-v1.json"),
             ]
         }
         exp = {"n_trials": 200, "n_jobs": 8, "seed": 42, "startup_trials": 15, **raw.get("experiment", {})}
@@ -120,6 +124,14 @@ class Catalog:
                 raise ValueError("Duplicate model ID")
             self.models[model["model_id"]] = model
         self.profiles = {}
+        self.calibrations: dict[str, SemanticCalibration] = {}
+        # 校准配置是可选文件：缺失时 legacy 流程照常工作，
+        # 只有引用它的 semantic profile 会在加载阶段失败（fail fast，且错误明确）。
+        calibration_path = settings.calibration_file
+        if calibration_path and Path(calibration_path).is_file():
+            raw_calibration = json.loads(Path(calibration_path).read_text(encoding="utf-8"))
+            for ident, item in (raw_calibration.get("versions") or {}).items():
+                self.calibrations[str(ident)] = SemanticCalibration.from_dict(dict(item))
         # 按文件名排序加载，保证加载顺序稳定（进而让错误信息稳定）
         for path in sorted(settings.profiles_dir.glob("*.json")):
             profile = ResolvedPipelineConfig.from_dict(json.loads(path.read_text(encoding="utf-8")))
@@ -128,6 +140,9 @@ class Catalog:
             # profile 引用的模型必须存在，否则启动即失败（fail fast）
             if profile.model_id not in self.models:
                 raise ValueError("Unknown model in profile")
+            # semantic profile 引用的校准版本必须存在，否则"质量分"将无据可依
+            if profile.calibration_id and profile.calibration_id not in self.calibrations:
+                raise ValueError("Unknown calibration in profile")
             self.profiles[profile.profile_id] = profile
 
     def profile(self, ident):
@@ -139,6 +154,15 @@ class Catalog:
         if ident not in self.models:
             raise ClusterError("MODEL_NOT_FOUND", "Model not found", 404)
         return self.models[ident]
+
+    def calibration(self, ident):
+        """取回校准配置；不存在时返回 None（legacy profile 本来就不需要）。"""
+
+        if not ident:
+            return None
+        if ident not in self.calibrations:
+            raise ClusterError("CALIBRATION_NOT_FOUND", "Calibration not found", 404)
+        return self.calibrations[ident]
 
 
 def model_fingerprint(spec):

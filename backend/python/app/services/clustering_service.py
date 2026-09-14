@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import threading
 import time
+from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,8 @@ from app.core.constants import (
     AUTO_PROFILE_ALGORITHM_PREFERENCE,
     MAX_ITEMS,
     MAX_TEXT_CHARS,
+    MIN_ITEMS,
+    MIN_SEMANTIC_ITEMS,
     NOISE_CLUSTER_ID,
 )
 from app.core.errors import (
@@ -60,6 +63,40 @@ def _from_engine_error(exc: Exception) -> ClusterGatewayError:
     error.code = getattr(exc, "code", "CLUSTERING_FAILED")
     error.status = getattr(exc, "status", 500)
     return error
+
+
+#: 实现版本 -> 能力描述。取自引擎的 Strategy 注册表，网关不自己发明能力定义。
+_CAPABILITY_CACHE: dict[str, dict[str, Any]] = {}
+
+
+def _capability_of(implementation_version: str) -> dict[str, Any]:
+    """返回某实现版本的能力（能否单条、能否 cache-only）。未登记则按最保守处理。"""
+
+    if implementation_version not in _CAPABILITY_CACHE:
+        try:
+            from retrain_cluster.services.strategies import list_strategy_versions
+
+            for entry in list_strategy_versions():
+                _CAPABILITY_CACHE[entry["implementation_version"]] = {
+                    "implementation_version": entry["implementation_version"],
+                    "supports_single_item": bool(entry.get("supports_single_item")),
+                    "supports_cache_only": bool(entry.get("supports_cache_only")),
+                    # 校准版本是 profile 级别的（同一版本可挂不同校准），
+                    # 因此这里恒为 None，真实值在 ProfileInfo.calibration_id 上。
+                    "calibration_version": entry.get("calibration_version"),
+                }
+        except Exception as exc:  # noqa: BLE001 - 引擎依赖缺失不应让元信息接口变成 500
+            logger.debug("能力表加载失败，退回保守默认值：%s", exc)
+        _CAPABILITY_CACHE.setdefault(
+            implementation_version,
+            {
+                "implementation_version": implementation_version,
+                "supports_single_item": False,
+                "supports_cache_only": False,
+                "calibration_version": None,
+            },
+        )
+    return _CAPABILITY_CACHE[implementation_version]
 
 
 class ClusteringGatewayService:
@@ -158,6 +195,25 @@ class ClusteringGatewayService:
             raise EngineUnavailableError(self._engine_error or "聚类引擎不可用。")
         return self._engine
 
+    def run_slot(self):
+        """占用"同一时刻只跑一个聚类"的执行槽位，返回上下文管理器。
+
+        作业路径与同步 `/run` 共用同一个槽位（而不是各拿一把锁）：两者的资源瓶颈
+        是同一份模型内存，各锁各的会让"并发上限"变成一句空话——同步请求照跑，
+        作业也照跑，内存该爆还是爆。抢不到就抛 `SERVICE_BUSY`（429）。
+        """
+
+        @contextmanager
+        def _slot():
+            if not self._run_lock.acquire(blocking=False):
+                raise ServiceBusyError("已有聚类任务正在执行，请稍后重试。")
+            try:
+                yield
+            finally:
+                self._run_lock.release()
+
+        return _slot()
+
     # ------------------------------------------------------------------ 元信息
 
     def _model_ready(self, model_id: str) -> tuple[bool, str | None]:
@@ -238,6 +294,10 @@ class ClusteringGatewayService:
                     "available": available,
                     "unavailable_reason": reason,
                     "warnings": list(WARNINGS.get(profile.algorithm, [])),
+                    # semantic profile 的阈值来自校准文件，profile 只引用它的 ID；
+                    # 把 ID 透出，前端可以据此说明"这批阈值尚未经人工校准验证"。
+                    "calibration_id": getattr(profile, "calibration_id", None),
+                    "capability": _capability_of(profile.implementation_version),
                 }
             )
         profiles.sort(
@@ -252,19 +312,28 @@ class ClusteringGatewayService:
         return profiles
 
     def list_algorithms(self) -> list[dict[str, Any]]:
-        """列出引擎暴露给 API 的算法及其可用性。"""
+        """列出引擎暴露给 API 的算法及其可用性。
+
+        实现版本按算法逐个判定，而不是一律写 `legacy-v1`：`semantic_auto_kmeans`
+        走的是 `semantic-v1`，两者的准入规则与能力并不相同，混报会让前端
+        无法判断"这个算法能不能只传 1 条"。
+        """
 
         self._require_engine()
         from retrain_cluster.clustering.registry import API_ALGORITHMS, WARNINGS, available
+        from retrain_cluster.services.strategies import LEGACY_VERSION, SEMANTIC_ALGORITHMS, SEMANTIC_VERSION
 
         return [
             {
                 "algorithm": name,
                 "available": bool(available(name)),
                 "backend": "python",
-                "implementation_version": "legacy-v1",
+                "implementation_version": SEMANTIC_VERSION if name in SEMANTIC_ALGORITHMS else LEGACY_VERSION,
                 "max_samples": MAX_ITEMS,
                 "warnings": list(WARNINGS.get(name, [])),
+                "capability": _capability_of(
+                    SEMANTIC_VERSION if name in SEMANTIC_ALGORITHMS else LEGACY_VERSION
+                ),
             }
             for name in API_ALGORITHMS
         ]
@@ -432,41 +501,97 @@ class ClusteringGatewayService:
         参数:
             payload: 形如 `{"items": [{"id","text","metadata"}], "options": {...}}`。
 
-        流程：引擎执行聚类（算法权威结果）→ 取回/复用向量 → 复现引擎的特征变换
-        → PCA 降维得到二维坐标 → 生成簇摘要。
+        分派顺序很关键（对应实施计划 10.1 的「增量接入」）：先解析 profile，
+        再按 `implementation_version` 决定走哪条路径，最后才做**版本相关**的
+        准入校验。因此 legacy 的行为与改动前逐字一致，而 semantic-v1 可以在
+        自己那条分支上放开「至少 2 条」这类 legacy 约束，而不是把 legacy
+        也一起放宽。
         """
-
-        from retrain_cluster.clustering.registry import validate_params
-        from retrain_cluster.features.pipeline import FeaturePipeline
-        from retrain_cluster.features.reduction import DimReducer
-        from retrain_cluster.types import EmbeddingBatch
 
         started = time.monotonic()
         options = dict(payload.get("options") or {})
         raw_items = payload.get("items") or []
-        validate_item_count(len(raw_items))
 
-        texts: list[str] = []
+        # 与版本无关的早退（空请求 / 超出服务上限）：放在加载引擎之前，
+        # 让明显非法的请求不必先付出「校验 1.3GB 本地模型」的代价。
+        validate_item_count(len(raw_items), minimum=MIN_SEMANTIC_ITEMS)
+
         sample_ids: list[str] = []
+        texts: list[str] = []
         metadata: list[dict[str, Any]] = []
         for index, item in enumerate(raw_items, start=1):
-            text = clean_hazard_text(str(item.get("text") or ""), limit=MAX_TEXT_CHARS)
-            if not text.strip():
-                raise InvalidInputError(f"第 {index} 条样本文本为空。")
-            texts.append(text)
+            texts.append("" if item.get("text") is None else str(item.get("text")))
             sample_ids.append(str(item.get("id") or f"row-{index}"))
             metadata.append(dict(item.get("metadata") or {}))
         if len(set(sample_ids)) != len(sample_ids):
             raise InvalidInputError("样本 ID 必须唯一，请检查输入数据。")
 
+        from retrain_cluster.clustering.registry import validate_params
+        from retrain_cluster.services.strategies import LEGACY_VERSION, SEMANTIC_VERSION
+
         engine = self._require_engine()
         profile = self._resolve_profile(options)
+        implementation = getattr(profile, "implementation_version", LEGACY_VERSION)
 
         # 引擎在真正执行前先校验超参：参数不合法立刻返回 422 语义，不做无谓计算。
         try:
             validate_params(profile.algorithm, profile.algorithm_params, profile.backend)
         except Exception as exc:  # noqa: BLE001
             raise _from_engine_error(exc) from exc
+
+        if implementation == SEMANTIC_VERSION:
+            return self._run_semantic(
+                engine=engine,
+                profile=profile,
+                sample_ids=sample_ids,
+                texts=texts,
+                metadata=metadata,
+                started=started,
+            )
+
+        # legacy-v1：仍然是「至少 2 条」；语义路径的放宽不外溢到这里。
+        validate_item_count(len(raw_items), minimum=MIN_ITEMS)
+        return self._run_legacy(
+            engine=engine,
+            profile=profile,
+            sample_ids=sample_ids,
+            texts=texts,
+            metadata=metadata,
+            options=options,
+            started=started,
+        )
+
+    # ------------------------------------------------------------------ legacy 分支
+
+    def _run_legacy(
+        self,
+        *,
+        engine: Any,
+        profile: Any,
+        sample_ids: list[str],
+        texts: list[str],
+        metadata: list[dict[str, Any]],
+        options: dict[str, Any],
+        started: float,
+    ) -> dict[str, Any]:
+        """legacy-v1：引擎算标签，网关复现特征变换并加工展示结构。
+
+        流程：引擎执行聚类（算法权威结果）→ 取回/复用向量 → 复现引擎的特征变换
+        → PCA 降维得到二维坐标 → 生成簇摘要。这一路径的行为与新增 semantic-v1
+        之前完全相同，一行都没有改动。
+        """
+
+        from retrain_cluster.features.pipeline import FeaturePipeline
+        from retrain_cluster.features.reduction import DimReducer
+        from retrain_cluster.types import EmbeddingBatch
+
+        cleaned: list[str] = []
+        for index, text in enumerate(texts, start=1):
+            value = clean_hazard_text(text, limit=MAX_TEXT_CHARS)
+            if not value.strip():
+                raise InvalidInputError(f"第 {index} 条样本文本为空。")
+            cleaned.append(value)
+        texts = cleaned
 
         if not self._run_lock.acquire(blocking=False):
             raise ServiceBusyError("已有聚类任务正在执行，请稍后重试。")
@@ -483,7 +608,7 @@ class ClusteringGatewayService:
                 raise _from_engine_error(exc) from exc
 
             labels = np.asarray([item["cluster_id"] for item in result["assignments"]], dtype=int)
-            if labels.shape != (len(raw_items),):
+            if labels.shape != (len(sample_ids),):
                 raise ClusteringError("引擎返回的标签数量与样本数不一致。")
 
             # ② 取回向量并复现引擎的特征变换（命中引擎自有缓存时不会重复推理）
@@ -543,7 +668,7 @@ class ClusteringGatewayService:
                 "algorithm": result["algorithm"],
                 "profile_id": result["profile_id"],
                 "model_id": profile.model_id,
-                "implementation_version": result.get("implementation_version", "legacy-v1"),
+                "implementation_version": result.get("implementation_version") or profile.implementation_version,
                 "embedding_dimension": int(transformed.shape[1]),
                 "cache_hit": bool(cache_hit),
                 "elapsed_ms": int(result.get("elapsed_ms", 0)),
@@ -558,3 +683,129 @@ class ClusteringGatewayService:
             }
         finally:
             self._run_lock.release()
+
+    # ------------------------------------------------------------------ semantic 分支
+
+    def _run_semantic(
+        self,
+        *,
+        engine: Any,
+        profile: Any,
+        sample_ids: list[str],
+        texts: list[str],
+        metadata: list[dict[str, Any]],
+        started: float,
+    ) -> dict[str, Any]:
+        """semantic-v1：引擎产出完整语义载荷，网关只做契约拼装与守恒校验。
+
+        与 legacy 分支最本质的差别是**不做二次加工**：
+
+        * 不复用 `FeaturePipeline` / `DimReducer` —— 那会把同一批文本再编码一次，
+          既慢，又让「向量口径」出现两个来源（引擎的语义空间 vs 网关复现的变换）；
+        * clusters / items / visualization 原样透传，保证"展示的就是引擎算的"；
+        * 命名、质量分、归属状态、二维抽样全部用引擎的语义口径，
+          网关不重新打分、不重命名、不重新抽样。
+
+        网关只补两件引擎不知道的事：网关总耗时，以及按契约做的守恒断言
+        ——宁可报错，也不返回对不上的结果。
+        """
+
+        if not self._run_lock.acquire(blocking=False):
+            raise ServiceBusyError("已有聚类任务正在执行，请稍后重试。")
+        try:
+            try:
+                result = engine.cluster(
+                    {
+                        "profile_id": profile.profile_id,
+                        "items": [
+                            {"id": ident, "text": text, "metadata": meta}
+                            for ident, text, meta in zip(sample_ids, texts, metadata)
+                        ],
+                    },
+                    enforce_api_limits=True,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("语义聚类执行失败：%s", exc)
+                raise _from_engine_error(exc) from exc
+        finally:
+            self._run_lock.release()
+
+        semantic = result.get("semantic")
+        if not isinstance(semantic, dict):
+            raise ClusteringError("引擎未返回 semantic-v1 结果集。")
+        engine_summary = dict(semantic.get("summary") or {})
+        clusters = list(semantic.get("clusters") or [])
+        items = list(semantic.get("items") or [])
+        visualization = list(semantic.get("visualization") or [])
+        if len(items) != len(sample_ids):
+            raise ClusteringError("引擎返回的逐条结果数量与样本数不一致。")
+
+        warnings = list(result.get("warnings") or [])
+        reduction = engine_summary.get("reduction") or {}
+        # 原始模型维度（而非降维后的拟合维度）才是"向量模型是几维"的答案
+        source_dim = int(reduction.get("source_dim") or 0)
+        misses = int(engine_summary.get("embedding_cache_misses") or 0)
+        non_noise = [cluster for cluster in clusters if int(cluster["cluster_id"]) != NOISE_CLUSTER_ID]
+        sizes = [int(cluster["size"]) for cluster in non_noise]
+        gateway_ms = round((time.monotonic() - started) * 1000)
+
+        summary: dict[str, Any] = {
+            # —— 兼容字段：与 legacy 同名字段语义对齐，旧前端无需改动 ——
+            "run_id": result["run_id"],
+            "total_samples": int(engine_summary.get("total_samples") or len(sample_ids)),
+            "cluster_count": int(engine_summary.get("cluster_count") or len(non_noise)),
+            "noise_count": int(engine_summary.get("noise_count") or 0),
+            "largest_cluster_size": int(engine_summary.get("largest_cluster_size") or (max(sizes) if sizes else 0)),
+            "smallest_cluster_size": int(engine_summary.get("smallest_cluster_size") or (min(sizes) if sizes else 0)),
+            "avg_cluster_size": float(engine_summary.get("avg_cluster_size") or 0.0),
+            "algorithm": result["algorithm"],
+            "profile_id": result["profile_id"],
+            "model_id": profile.model_id,
+            "implementation_version": result.get("implementation_version", "semantic-v1"),
+            "embedding_dimension": source_dim,
+            # 语义路径的 cache_hit 口径是"本次没有发生任何新的向量推理"，
+            # 与 legacy 的"批缓存命中"是同一个问题的两种表述。
+            "cache_hit": misses == 0,
+            "elapsed_ms": int(result.get("elapsed_ms", 0)),
+            "gateway_ms": gateway_ms,
+            "warnings": warnings,
+            # —— semantic-v1 扩展字段：全部来自引擎，网关不重算 ——
+            "invalid_count": int(engine_summary.get("invalid_count") or 0),
+            "duplicate_count": int(engine_summary.get("duplicate_count") or 0),
+            "unique_count": int(engine_summary.get("unique_count") or 0),
+            "coverage": engine_summary.get("coverage"),
+            "noise_ratio": engine_summary.get("noise_ratio"),
+            "selected_k": engine_summary.get("selected_k"),
+            "final_k": engine_summary.get("final_k"),
+            "auto_k_status": engine_summary.get("auto_k_status"),
+            "quality_score": engine_summary.get("quality_score"),
+            "weighted_quality_score": engine_summary.get("weighted_quality_score"),
+            "overall_quality": engine_summary.get("overall_quality"),
+            "quality_version": engine_summary.get("quality_version"),
+            "confidence_version": engine_summary.get("confidence_version"),
+            "naming_version": engine_summary.get("naming_version"),
+            "normalization_version": engine_summary.get("normalization_version"),
+            "calibration_version": engine_summary.get("calibration_version"),
+            "calibration_status": engine_summary.get("calibration_status"),
+            "effective_model_id": engine_summary.get("effective_model_id"),
+            "device": engine_summary.get("device"),
+            "seed": engine_summary.get("seed"),
+            "embedding_cache_hits": engine_summary.get("embedding_cache_hits"),
+            "embedding_cache_misses": engine_summary.get("embedding_cache_misses"),
+            "embedding_cache_hit_ratio": engine_summary.get("embedding_cache_hit_ratio"),
+            "cache_only": bool(engine_summary.get("cache_only", False)),
+            "fallback_reason": engine_summary.get("fallback_reason"),
+            "visualization_sample_count": engine_summary.get("visualization_sample_count") or len(visualization),
+            "visualization_total_count": engine_summary.get("visualization_total_count"),
+            "stage_timings": engine_summary.get("stage_timings"),
+            "diagnostics": engine_summary.get("diagnostics"),
+            "auto_k": engine_summary.get("auto_k"),
+            "reduction": reduction or None,
+            "postprocess": engine_summary.get("postprocess"),
+        }
+        return {
+            "summary": summary,
+            "clusters": clusters,
+            "items": items,
+            "visualization": visualization,
+        }

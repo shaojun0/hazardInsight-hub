@@ -19,5 +19,5 @@
   "compatibility_status": "legacy",
   "source_result": "output_bge_large/LeaderOptimizer_0_0_best_param.json",
   "source_sha256": "4af5fc0523b9a7885ffd4bfd33f4848cab4d5bc18ec8c2b6b089caa8ffdd6c7c",
-  "max_samples": 500
+  "max_samples": 300000
 }

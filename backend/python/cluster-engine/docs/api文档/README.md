@@ -534,9 +534,9 @@ retrain-cluster --config configs/app.toml serve [--host H] [--port P]
 
 | 键 | 默认 | 说明 | 环境变量 |
 |---|---|---|---|
-| `max_samples` | 500 | 单次请求最大样本数 | `RETRAIN_MAX_SAMPLES` |
+| `max_samples` | 300000 | 单次请求最大样本数 | `RETRAIN_MAX_SAMPLES` |
 | `max_text_length` | 4000 | 单条文本最大字符数 | — |
-| `max_body_bytes` | 2097152 | 请求体上限（2 MiB） | — |
+| `max_body_bytes` | 209715200 | 请求体上限（200 MiB） | — |
 | `timeout_seconds` | 60.0 | 单次聚类执行超时 | `RETRAIN_TIMEOUT_SECONDS` |
 | `query_batch` | 64 | 检索分批大小 | — |
 | `host` | `127.0.0.1` | 监听地址 | `RETRAIN_HOST` |

@@ -20,7 +20,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.clustering import router as clustering_router
-from app.api.deps import get_cluster_service
+from app.api.deps import get_cluster_service, get_job_service
 from app.api.error_handlers import register_error_handlers
 from app.api.health import router as health_router
 from app.core.config import get_settings
@@ -36,13 +36,23 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        """启动时在后台预热引擎与本地模型校验，避免首个请求承担全部等待。"""
+        """启动时预热引擎、拉起作业派发线程；关闭时回收执行子进程。
+
+        启停顺序是有意的：先 `preload()`（后台线程，不阻塞启动），再启动作业派发。
+        派发线程内部会做一次**重启恢复**——把上次遗留的 running 作业标成失败、
+        把排队中的重新入队，否则刷新页面会看到一批永远停在 running 的僵尸作业。
+        """
 
         logger.info("%s v%s 启动中…", settings.app_name, settings.app_version)
         get_cluster_service().preload()
+        jobs = get_job_service()
+        jobs.start()
         try:
             yield
         finally:
+            # 回收子进程：不这么做的话，长驻的 spawn 子进程会跟着 uvicorn
+            # 一起变成孤儿，把模型内存一直占着。
+            jobs.stop()
             logger.info("%s 已停止", settings.app_name)
 
     app = FastAPI(

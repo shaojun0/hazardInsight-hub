@@ -279,7 +279,7 @@ pip install -e ".[api,retrieval,algorithms,dev]"
 | `RETRAIN_CONFIG` | 配置文件路径（等价于 `--config`） | `configs/app.toml` |
 | `EMBEDDING_API_KEY` | 远程嵌入服务凭证（`models.toml` 的 `api_key_env`） | 无，缺失则 `503` |
 | `RETRAIN_ARTIFACTS_DIR` | 产物根目录 | `configs/` 同级的 `../artifacts` |
-| `RETRAIN_MAX_SAMPLES` | 单请求样本上限 | 500 |
+| `RETRAIN_MAX_SAMPLES` | 单请求样本上限 | 300000 |
 | `RETRAIN_HOST` / `RETRAIN_PORT` | 服务监听地址 | `127.0.0.1` / `8000` |
 | `N_TRIALS` / `N_JOBS` / `SEED` | 覆盖 `[experiment]` 搜索规模 | 200 / 8 / 42 |
 

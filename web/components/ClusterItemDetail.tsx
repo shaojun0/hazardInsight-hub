@@ -16,6 +16,22 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * 成员归属状态的中文说明。
+ *
+ * `semantic-v1` 用这套状态取代了"要么属于某簇、要么是噪声"的二分：
+ * 同为未归类，`noise`（不属任何主题）与 `invalid`（规范化后没有有效语义）
+ * 是两个完全不同的原因，混在一起会让用户以为是自己数据的问题。
+ */
+const ASSIGNMENT_LABELS: Record<string, string> = {
+  core: '核心成员（同时通过绝对语义门槛与簇半径）',
+  borderline: '边界成员（语义达标，但离两个簇都不够远）',
+  small_coherent: '小簇成员（数量少但组内自洽，已保留）',
+  duplicate_only: '重复文本（多条相同文本构成，语义质量不评分）',
+  noise: '未归类（不属任何主题）',
+  invalid: '无效文本（规范化后没有可用的语义内容）',
+};
+
 export function ClusterItemDetail({ item, summary, onClose }: Props) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -64,10 +80,18 @@ export function ClusterItemDetail({ item, summary, onClose }: Props) {
               <span className="cluster-legend-dot" style={{ background: clusterColor(item.clusterId) }} />
               <strong>所属簇：</strong>
               {item.clusterLabel}
-              {item.clusterId < 0 && <span className="tag cluster-noise-tag">噪声点</span>}
+              {item.clusterId < 0 && <span className="tag cluster-noise-tag">未归类</span>}
             </p>
-            <p><strong>置信度：</strong>{item.confidence === null || item.confidence === undefined ? '—' : item.confidence.toFixed(3)}<span className="small muted"> （与簇质心的余弦相似度映射到 0~1）</span></p>
-            <p><strong>到质心距离：</strong>{item.distance === null || item.distance === undefined ? '—' : item.distance.toFixed(4)}</p>
+            {/* assignmentStatus 比 clusterId 更细：同为未归类，噪声与无效文本是两回事 */}
+            {item.assignmentStatus && (
+              <p>
+                <strong>归属状态：</strong>
+                {ASSIGNMENT_LABELS[item.assignmentStatus] ?? item.assignmentStatus}
+                {item.noiseReason && <span className="small muted"> （原因：{item.noiseReason}）</span>}
+              </p>
+            )}
+            <p><strong>置信度：</strong>{item.confidence === null || item.confidence === undefined ? '—' : item.confidence.toFixed(3)}<span className="small muted"> （与簇质心的{item.distanceMetric === 'cosine' ? '余弦' : ''}相似度映射到 0~1）</span></p>
+            <p><strong>到质心距离：</strong>{item.distance === null || item.distance === undefined ? '—' : item.distance.toFixed(4)}<span className="small muted"> （{item.distanceMetric === 'cosine' ? '余弦距离' : '欧氏距离'}）</span></p>
             {item.keywords.length > 0 && (
               <p><strong>关键词：</strong>{item.keywords.map((word) => <span key={word} className="chip cluster-keyword">{word}</span>)}</p>
             )}

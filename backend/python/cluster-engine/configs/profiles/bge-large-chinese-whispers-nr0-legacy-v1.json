@@ -20,5 +20,5 @@
   "compatibility_status": "legacy_with_known_issues",
   "source_result": "output_bge_large/ChineseWhispersOptimizer_0_0_best_param.json",
   "source_sha256": "3a8e28dd22c09a534e5208a7690c6f5ce58dae3ee3f7436be225680e655c17e8",
-  "max_samples": 500
+  "max_samples": 300000
 }
