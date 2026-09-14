@@ -45,6 +45,11 @@ import {
   summarizeJobResult,
   toggleExpandedJob,
 } from '../../web/lib/clusteringJobHistory.js';
+import {
+  DEBUG_ONLY_CLUSTERING_WARNINGS,
+  logDebugWarnings,
+  splitClusteringWarnings,
+} from '../../web/lib/clusteringWarnings.js';
 import { applyTableQuery, collectKeywordOptions } from '../../web/lib/useTableQuery.js';
 
 /**
@@ -909,4 +914,60 @@ test('历史状态的徽标文案与配色分级正确', () => {
 test('历史记录优先用 Run ID 定位，缺失时退回 jobId', () => {
   assert.equal(jobRunLabel(job({ runId: 'run_9' })), 'run_9');
   assert.equal(jobRunLabel(job({ runId: null })), 'job_1');
+});
+
+/* ---------- 告警码分流（原始码只进调试窗口） ---------- */
+
+test('两个原始告警码不进界面，可读提示保留，且分流顺序稳定', () => {
+  const split = splitClusteringWarnings([
+    'POLARITY_GUARD_TRIGGERED',
+    '簇内文本高度重复，结果仅供参考',
+    'SPEAR_VIZ_NOT_COMPUTED',
+  ]);
+  // 界面只看到中文提示；两个英文码一个都不出现
+  assert.deepEqual(split.visible, ['簇内文本高度重复，结果仅供参考']);
+  assert.deepEqual(split.debug, ['POLARITY_GUARD_TRIGGERED', 'SPEAR_VIZ_NOT_COMPUTED']);
+  for (const code of DEBUG_ONLY_CLUSTERING_WARNINGS) {
+    assert.ok(!split.visible.includes(code), `界面不应出现 ${code}`);
+  }
+});
+
+test('告警分流去重、忽略空项，空输入安全', () => {
+  assert.deepEqual(splitClusteringWarnings(undefined), { visible: [], debug: [] });
+  assert.deepEqual(splitClusteringWarnings(null), { visible: [], debug: [] });
+  assert.deepEqual(splitClusteringWarnings([]), { visible: [], debug: [] });
+
+  // 同一个码可能同时出现在作业级与结果级 warnings，去重避免 React key 冲突
+  const duplicated = splitClusteringWarnings(['A', 'B', 'A', 'B']);
+  assert.deepEqual(duplicated.visible, ['A', 'B']);
+  const repeated = splitClusteringWarnings([
+    'SPEAR_VIZ_NOT_COMPUTED',
+    'SPEAR_VIZ_NOT_COMPUTED',
+  ]);
+  assert.deepEqual(repeated.debug, ['SPEAR_VIZ_NOT_COMPUTED']);
+
+  const blank = splitClusteringWarnings(['', '   ', '有效提示']);
+  assert.deepEqual(blank.visible, ['有效提示']);
+});
+
+test('被隐藏的告警码写进浏览器控制台，没有可隐藏项时不刷屏', () => {
+  const calls: unknown[][] = [];
+  const original = console.debug;
+  console.debug = ((...args: unknown[]) => {
+    calls.push(args);
+  }) as typeof console.debug;
+  try {
+    logDebugWarnings('聚类结果', ['SPEAR_VIZ_NOT_COMPUTED', 'POLARITY_GUARD_TRIGGERED']);
+    // 界面上看不到的码，控制台必须看得到，否则等于把信息直接丢掉
+    assert.equal(calls.length, 1);
+    const line = String(calls[0][0]);
+    assert.match(line, /聚类结果/);
+    assert.match(line, /SPEAR_VIZ_NOT_COMPUTED/);
+    assert.match(line, /POLARITY_GUARD_TRIGGERED/);
+
+    logDebugWarnings('聚类结果', []);
+    assert.equal(calls.length, 1);
+  } finally {
+    console.debug = original;
+  }
 });

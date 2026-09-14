@@ -10,7 +10,7 @@
  * 就地给出可读原因，而不是打开后发现空白。
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   ClusteringJobInfo,
   ClusteringJobItemsPage,
@@ -22,6 +22,7 @@ import {
   fetchClusteringJobs,
 } from '../api/clustering';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
+import { logDebugWarnings, splitClusteringWarnings } from '../lib/clusteringWarnings';
 import {
   HISTORY_ITEMS_PAGE_SIZE,
   HISTORY_LIST_LIMIT,
@@ -112,6 +113,8 @@ export function ClusteringJobHistory() {
           <ul className="clustering-history-list">
             {jobs.map((job) => {
               const open = job.jobId === expandedId;
+              // 只统计"界面真的会显示"的提示：全被分流到控制台时不该冒出"N 条提示"
+              const visibleWarnings = splitClusteringWarnings(job.warnings).visible;
               return (
                 <li key={job.jobId} className={`clustering-history-item ${open ? 'is-open' : ''}`}>
                   <button
@@ -137,7 +140,11 @@ export function ClusteringJobHistory() {
                     <span>{formatJobDuration(job)}</span>
                     <span className="mono clustering-history-run" title={job.jobId}>{jobRunLabel(job)}</span>
                     <span className="clustering-history-flag">
-                      {job.error ? `有错误：${job.error.message}` : job.warnings.length ? `${job.warnings.length} 条提示` : ''}
+                      {job.error
+                        ? `有错误：${job.error.message}`
+                        : visibleWarnings.length
+                          ? `${visibleWarnings.length} 条提示`
+                          : ''}
                     </span>
                   </button>
                   {open && <JobHistoryDetail job={job} onRefresh={loadJobs} refreshing={busy} />}
@@ -218,6 +225,20 @@ function JobHistoryDetail({
     };
   }, [job.jobId, kind, page, retry]);
 
+  /**
+   * 告警分流：作业级与结果级的原始英文码统一过滤后只写控制台（调试窗口），
+   * 界面只留能读懂的中文提示。分两个 memo 是为了保持原有的显示来源不变
+   * （作业级提示只在非成功态出现，结果级提示只在成功态出现）。
+   */
+  const jobWarnings = useMemo(() => splitClusteringWarnings(job.warnings), [job]);
+  const resultWarnings = useMemo(
+    () => splitClusteringWarnings(result ? [...result.summary.warnings, ...result.warnings] : []),
+    [result],
+  );
+  useEffect(() => {
+    logDebugWarnings(`作业 ${job.jobId}`, [...jobWarnings.debug, ...resultWarnings.debug]);
+  }, [job.jobId, jobWarnings, resultWarnings]);
+
   if (kind !== 'result') {
     return (
       <div className="clustering-history-detail">
@@ -229,7 +250,7 @@ function JobHistoryDetail({
             <IconRefresh size={14} />{refreshing ? '刷新中…' : '刷新状态'}
           </button>
         )}
-        {job.warnings.map((warning) => (
+        {jobWarnings.visible.map((warning) => (
           <p key={warning} className="clustering-notice">{warning}</p>
         ))}
       </div>
@@ -264,10 +285,7 @@ function JobHistoryDetail({
             ))}
           </div>
 
-          {result.summary.warnings.map((warning) => (
-            <p key={warning} className="clustering-notice">{warning}</p>
-          ))}
-          {result.warnings.map((warning) => (
+          {resultWarnings.visible.map((warning) => (
             <p key={warning} className="clustering-notice">{warning}</p>
           ))}
 

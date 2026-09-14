@@ -32,6 +32,7 @@ import { KnowledgeBasePicker, knowledgeBaseName } from '../components/KnowledgeB
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
 import { IconLayers, IconPlay, IconRefresh, IconServer, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
+import { logDebugWarnings, splitClusteringWarnings } from '../lib/clusteringWarnings';
 import { useClusterEngine } from '../lib/useClusterEngine';
 import { useClusteringJob } from '../lib/useClusteringJob';
 import { useTableQuery } from '../lib/useTableQuery';
@@ -275,6 +276,16 @@ export function ClusteringOverview() {
     : result?.clusters.find((cluster) => cluster.clusterId === activeClusterId) ?? null;
 
   const summary = result?.summary;
+
+  /**
+   * 告警分流：POLARITY_GUARD_TRIGGERED / SPEAR_VIZ_NOT_COMPUTED 这类原始英文码
+   * 只写浏览器控制台（调试窗口），结果卡片上不再出现——它们要不说的是预期行为，
+   * 要不已有更具体的中文说明，摆在界面上只会被当成报错。
+   */
+  const summaryWarnings = useMemo(() => splitClusteringWarnings(summary?.warnings), [summary]);
+  useEffect(() => {
+    logDebugWarnings('聚类结果', summaryWarnings.debug);
+  }, [summaryWarnings]);
 
   /**
    * 本次实际执行的 profile。
@@ -627,7 +638,7 @@ export function ClusteringOverview() {
                 阈值与权重不在 profile 里，如需调整请改校准配置后重新运行。
               </p>
             )}
-            {summary.warnings.map((warning) => (
+            {summaryWarnings.visible.map((warning) => (
               <p key={warning} className="clustering-notice">{warning}</p>
             ))}
             {(summary.clusterCount <= 1 || summary.noiseCount === summary.totalSamples) && (
