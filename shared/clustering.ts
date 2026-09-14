@@ -48,6 +48,11 @@ export interface ClusteringRunOptions {
    * `true/false` 用于现场对照实验，`null`（不传）表示完全按 profile 执行。
    */
   purify?: boolean | null;
+  /**
+   * 检索增强 profile 专用：覆盖 profile 的默认知识库，改用指定的偏差数据库。
+   * `null` / 不传表示按 profile 执行；纯向量 profile 传了会被后端拒绝（422）。
+   */
+  knowledgeBaseId?: string | null;
 }
 
 /** 聚类请求体。 */
@@ -535,4 +540,88 @@ export interface ClusteringDatasetReference {
   total: number;
   createdAt?: string | null;
   warnings: string[];
+}
+
+/* ------------------------------------------------------------------ 偏差数据库 */
+
+/**
+ * 一个聚类语义知识库的元信息。
+ *
+ * 对应 cluster-engine `artifacts/knowledge_bases/<id>/manifest.json` 与目录本身；
+ * 字段缺失时按空/0 展示，不臆测（历史库没有的字段本来就不存在）。
+ */
+export interface ClusteringKnowledgeBaseInfo {
+  knowledgeBaseId: string;
+  displayName: string;
+  status: string;
+  verification: string;
+  /** 预处理口径：`raw-lines-v1` / `purified-qwen-v1` / `raw-upload-v1` 等。 */
+  processing: string;
+  entryCount: number;
+  dimension: number;
+  metric: string;
+  modelFingerprint: string;
+  modelId?: string | null;
+  sourceName?: string | null;
+  sourceSha256: string;
+  createdAt?: string | null;
+  sizeBytes: number;
+  /** 是否保留了索引文本快照（决定详情页能否看到条目）。 */
+  hasEntries: boolean;
+  /** 是否保留了上传语料原文快照。 */
+  hasCorpus: boolean;
+}
+
+/** 知识库里的一条文本。 */
+export interface ClusteringKnowledgeBaseEntry {
+  index: number;
+  text: string;
+}
+
+/**
+ * 知识库详情。
+ *
+ * `entriesSource` 说明条目内容从哪里读到，页面必须如实展示：
+ * `snapshot`（构建快照）/ `corpus`（上传语料）/ `source`（历史来源）/ `unavailable`。
+ */
+export interface ClusteringKnowledgeBaseDetail extends ClusteringKnowledgeBaseInfo {
+  entriesSource: string;
+  entryTotal: number;
+  offset: number;
+  limit: number;
+  entries: ClusteringKnowledgeBaseEntry[];
+  warnings: string[];
+}
+
+/** 知识库生成作业的状态快照（与聚类作业同形，便于复用展示组件）。 */
+export interface ClusteringKnowledgeBaseJob {
+  jobId: string;
+  status: string;
+  /** `queued` / `purify` / `embed` / `index` / `done` / `failed`。 */
+  stage: string;
+  processed: number;
+  total: number;
+  message?: string | null;
+  knowledgeBaseId?: string | null;
+  displayName?: string | null;
+  /** `purified`（大模型净化后入库）/ `raw`（原文直接入库）。 */
+  mode?: string | null;
+  modelId?: string | null;
+  sourceName?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  finishedAt?: string | null;
+  error?: { code: string; message: string } | null;
+  warnings: string[];
+  terminal: boolean;
+}
+
+/** 上传语料生成知识库时的选项。 */
+export interface ClusteringKnowledgeBaseBuildOptions {
+  name: string;
+  mode: 'purified' | 'raw';
+  /** 可选：自定义 ASCII 标识；留空则由后端按名称/时间分配。 */
+  ident?: string | null;
+  /** 可选：指定向量模型；留空则沿用检索 profile 的模型。 */
+  modelId?: string | null;
 }

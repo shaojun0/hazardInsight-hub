@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import type { ClusteringClusterGroup, ClusteringResultItem } from '../../shared/clustering.js';
 import {
+  buildKnowledgeBase,
   cancelClusteringJob,
   fetchClusteringBaseline,
   fetchClusteringHealth,
   fetchClusteringJob,
   fetchClusteringJobItems,
   fetchClusteringProfiles,
+  fetchKnowledgeBaseDetail,
+  fetchKnowledgeBases,
   runClustering,
   submitClusteringJob,
   uploadClusteringDataset,
@@ -150,6 +153,71 @@ test('run posts camelCase options in the body', async () => {
       reduceMethod: 'none',
     });
     assert.equal(body.items[0].text, '未设置警戒围栏');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('run forwards the selected knowledge base as a camelCase option', async () => {
+  const stub = stubFetch(jsonResponse({ success: true, data: { summary: {}, clusters: [], items: [], visualization: [] }, error: null }));
+  try {
+    await runClustering([{ id: 'a', text: '支架安装偏差', metadata: {} }], {
+      profileId: 'spear_purified_retrieval',
+      knowledgeBaseId: 'kb-2026q1',
+    });
+    const body = JSON.parse(String(stub.calls[0].init?.body));
+    assert.equal(body.options.knowledgeBaseId, 'kb-2026q1');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('knowledge base list unwraps the envelope', async () => {
+  const stub = stubFetch(
+    jsonResponse({
+      success: true,
+      data: { knowledgeBases: [{ knowledgeBaseId: 'kb-1', displayName: '库一', entryCount: 3 }] },
+      error: null,
+    }),
+  );
+  try {
+    const items = await fetchKnowledgeBases();
+    assert.equal(stub.calls[0].url, '/api/clustering/knowledge-bases');
+    assert.equal(items[0].knowledgeBaseId, 'kb-1');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('knowledge base detail url-encodes the id and pages entries', async () => {
+  const stub = stubFetch(
+    jsonResponse({ success: true, data: { knowledgeBaseId: 'kb/1', entries: [], warnings: [] }, error: null }),
+  );
+  try {
+    await fetchKnowledgeBaseDetail('kb/1', 20, 50);
+    assert.equal(stub.calls[0].url, '/api/clustering/knowledge-bases/kb%2F1?offset=20&limit=50');
+  } finally {
+    stub.restore();
+  }
+});
+
+test('knowledge base build posts multipart fields the backend expects', async () => {
+  const stub = stubFetch(jsonResponse({ success: true, data: { jobId: 'kbjob_1', status: 'running', terminal: false }, error: null }));
+  try {
+    await buildKnowledgeBase(new File(['支架安装偏差'], 'corpus.txt', { type: 'text/plain' }), {
+      name: '巡检语料',
+      mode: 'purified',
+      ident: 'kb-custom',
+    });
+    const call = stub.calls[0];
+    assert.equal(call.url, '/api/clustering/knowledge-bases');
+    assert.equal(call.init?.method, 'POST');
+    const body = call.init?.body as FormData;
+    assert.ok(body instanceof FormData);
+    assert.ok(body.get('file'));
+    assert.equal(body.get('name'), '巡检语料');
+    assert.equal(body.get('mode'), 'purified');
+    assert.equal(body.get('ident'), 'kb-custom');
   } finally {
     stub.restore();
   }

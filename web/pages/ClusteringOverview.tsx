@@ -11,12 +11,14 @@ import type {
   ClusteringClusterGroup,
   ClusteringData,
   ClusteringDatasetItem,
+  ClusteringKnowledgeBaseInfo,
   ClusteringOfflineBaseline,
   ClusteringResultItem,
 } from '../../shared/clustering';
 import {
   fetchClusteringBaseline,
   fetchClusteringSample,
+  fetchKnowledgeBases,
   runClustering,
   uploadClusteringDataset,
 } from '../api/clustering';
@@ -32,6 +34,16 @@ import { useTableQuery } from '../lib/useTableQuery';
 import './Clustering.css';
 
 const PAGE_SIZE = 20;
+
+/** 「按 profile 默认」选项的补充说明：把默认库标识映射成可读名称（找不到就显示标识）。 */
+function kbDefaultLabel(
+  defaultId: string | null | undefined,
+  list: ClusteringKnowledgeBaseInfo[],
+): string {
+  if (!defaultId) return '';
+  const found = list.find((kb) => kb.knowledgeBaseId === defaultId);
+  return `（${found?.displayName ?? defaultId}）`;
+}
 
 interface LoadedDataset {
   name: string;
@@ -57,6 +69,12 @@ export function ClusteringOverview() {
    * 只在所选 profile 的实现版本带净化能力时才有意义（见 selectedProfile）。
    */
   const [purifyMode, setPurifyMode] = useState<'profile' | 'on' | 'off'>('profile');
+  /**
+   * 本次检索增强使用的知识库（偏差数据库）。空串表示按 profile 的默认知识库执行。
+   * 只对检索增强 profile 有意义（见 retrievalSupported）。
+   */
+  const [knowledgeBases, setKnowledgeBases] = useState<ClusteringKnowledgeBaseInfo[]>([]);
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState('');
   const [baseline, setBaseline] = useState<ClusteringOfflineBaseline | null>(null);
   const [baselineBusy, setBaselineBusy] = useState(false);
   const [baselineError, setBaselineError] = useState('');
@@ -93,6 +111,14 @@ export function ClusteringOverview() {
   useEffect(() => {
     void loadSample();
   }, [loadSample]);
+
+  // 偏差数据库清单：只在引擎就绪后拉取；失败不阻塞聚类（选择器留空即可）。
+  useEffect(() => {
+    if (!engine.ready) return;
+    void fetchKnowledgeBases()
+      .then(setKnowledgeBases)
+      .catch(() => setKnowledgeBases([]));
+  }, [engine.ready]);
 
   const availableAlgorithms = useMemo(
     () => engine.algorithms.filter((item) => item.available),
@@ -159,7 +185,19 @@ export function ClusteringOverview() {
    */
   const purificationSupported = Boolean(selectedProfile?.capability?.purification);
 
+  /**
+   * 所选 profile 是否做检索增强（`n_results > 0`）。
+   * 只有这类 profile 才吃「知识库」选择；纯向量 profile 传了会被后端 422。
+   */
+  const retrievalSupported = Number(selectedProfile?.features?.n_results ?? 0) > 0;
+
+  // 切换 profile 时把知识库重置为该 profile 的默认库（没有默认则留空=按 profile）。
+  useEffect(() => {
+    setKnowledgeBaseId(selectedProfile?.knowledgeBaseId ?? '');
+  }, [selectedProfile]);
+
   const purifyOverride = purifyMode === 'profile' ? undefined : purifyMode === 'on';
+  const knowledgeBaseOverride = knowledgeBaseId || undefined;
 
   const canRun = Boolean(dataset && dataset.items.length >= minItems) && !running && !datasetBusy;
 
@@ -190,6 +228,7 @@ export function ClusteringOverview() {
         visualize,
         reduceMethod: visualize ? 'pca' : 'none',
         purify: purifyOverride,
+        knowledgeBaseId: knowledgeBaseOverride,
       });
       setResult(next);
       setActiveClusterId(null);
@@ -201,7 +240,7 @@ export function ClusteringOverview() {
     } finally {
       setRunning(false);
     }
-  }, [dataset, algorithm, profileId, visualize, purifyOverride, minItems, setRowClusterFilter]);
+  }, [dataset, algorithm, profileId, visualize, purifyOverride, knowledgeBaseOverride, minItems, setRowClusterFilter]);
 
   // 明细表过滤（含簇筛选/关键词搜索/表头筛选）与排序，全部由 useTableQuery 统一提供。
   const filteredItems = table.rows;
@@ -343,6 +382,29 @@ export function ClusteringOverview() {
                 <option value="profile">按 profile（推荐）</option>
                 <option value="on">强制开启</option>
                 <option value="off">关闭（对照组）</option>
+              </select>
+            </label>
+          )}
+          {/*
+            知识库选择只在所选 profile 做检索增强时出现：纯向量 profile 不吃知识库，
+            后端会直接 422。默认值是该 profile 清单里的默认库；也可切到「偏差数据库」
+            页面新建的库。
+          */}
+          {retrievalSupported && (
+            <label>
+              偏差数据库
+              <select
+                className="select"
+                value={knowledgeBaseId}
+                disabled={running}
+                onChange={(event) => setKnowledgeBaseId(event.target.value)}
+              >
+                <option value="">按 profile 默认{kbDefaultLabel(selectedProfile?.knowledgeBaseId, knowledgeBases)}</option>
+                {knowledgeBases.map((kb) => (
+                  <option key={kb.knowledgeBaseId} value={kb.knowledgeBaseId}>
+                    {kb.displayName}（{kb.entryCount} 条 · {kb.status}）
+                  </option>
+                ))}
               </select>
             </label>
           )}

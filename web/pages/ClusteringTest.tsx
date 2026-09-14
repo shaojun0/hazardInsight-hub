@@ -15,9 +15,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type {
   ClusteringData,
   ClusteringDatasetItem,
+  ClusteringKnowledgeBaseInfo,
   ClusteringResultItem,
 } from '../../shared/clustering';
-import { fetchClusteringSample, runClustering, uploadClusteringDataset } from '../api/clustering';
+import {
+  fetchClusteringSample,
+  fetchKnowledgeBases,
+  runClustering,
+  uploadClusteringDataset,
+} from '../api/clustering';
 import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
@@ -71,6 +77,9 @@ export function ClusteringTest() {
   const [error, setError] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** 本次检索增强使用的知识库；空串表示按 profile 默认。 */
+  const [knowledgeBases, setKnowledgeBases] = useState<ClusteringKnowledgeBaseInfo[]>([]);
+  const [knowledgeBaseId, setKnowledgeBaseId] = useState('');
 
   /**
    * 明细表的筛选/排序/搜索。
@@ -116,6 +125,27 @@ export function ClusteringTest() {
       setProfileId('');
     }
   }, [profileId, selectableProfiles]);
+
+  /** 当前所选 profile（用于判断能力与默认知识库）。 */
+  const selectedProfile = useMemo(
+    () => selectableProfiles.find((profile) => profile.profileId === profileId),
+    [profileId, selectableProfiles],
+  );
+
+  /** 只有检索增强 profile（n_results > 0）才吃知识库选择。 */
+  const retrievalSupported = Number(selectedProfile?.features?.n_results ?? 0) > 0;
+
+  useEffect(() => {
+    setKnowledgeBaseId(selectedProfile?.knowledgeBaseId ?? '');
+  }, [selectedProfile]);
+
+  // 偏差数据库清单：引擎就绪后拉取，失败不阻塞聚类。
+  useEffect(() => {
+    if (!engine.ready) return;
+    void fetchKnowledgeBases()
+      .then(setKnowledgeBases)
+      .catch(() => setKnowledgeBases([]));
+  }, [engine.ready]);
 
   const upload = useCallback(async (file: File) => {
     setBusy(true);
@@ -169,6 +199,7 @@ export function ClusteringTest() {
         algorithm: algorithm || undefined,
         profileId: profileId || undefined,
         visualize: false,
+        knowledgeBaseId: knowledgeBaseId || undefined,
       });
       setResult(next);
       setComparison([]);
@@ -179,7 +210,7 @@ export function ClusteringTest() {
     } finally {
       setRunning(false);
     }
-  }, [items, algorithm, profileId, minItems, setRowClusterFilter]);
+  }, [items, algorithm, profileId, knowledgeBaseId, minItems, setRowClusterFilter]);
 
   const startCompare = useCallback(async () => {
     if (selectedAlgorithms.length < 2) {
@@ -389,6 +420,32 @@ export function ClusteringTest() {
                 ))}
               </select>
             </label>
+            {retrievalSupported && (
+              <label>
+                偏差数据库
+                <select
+                  className="select"
+                  value={knowledgeBaseId}
+                  disabled={running}
+                  onChange={(event) => setKnowledgeBaseId(event.target.value)}
+                >
+                  <option value="">
+                    按 profile 默认
+                    {selectedProfile?.knowledgeBaseId
+                      ? `（${
+                          knowledgeBases.find((kb) => kb.knowledgeBaseId === selectedProfile.knowledgeBaseId)
+                            ?.displayName ?? selectedProfile.knowledgeBaseId
+                        }）`
+                      : ''}
+                  </option>
+                  {knowledgeBases.map((kb) => (
+                    <option key={kb.knowledgeBaseId} value={kb.knowledgeBaseId}>
+                      {kb.displayName}（{kb.entryCount} 条）
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button className="btn btn-primary" disabled={running || !engine.ready || items.length < minItems} onClick={() => void startSingle()}>
               <IconPlay size={15} />{running ? '执行中…' : '执行聚类'}
             </button>
