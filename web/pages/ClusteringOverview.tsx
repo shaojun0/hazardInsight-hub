@@ -11,6 +11,7 @@ import type {
   ClusteringClusterGroup,
   ClusteringData,
   ClusteringDatasetItem,
+  ClusteringJobSubmitOptions,
   ClusteringKnowledgeBaseInfo,
   ClusteringOfflineBaseline,
   ClusteringResultItem,
@@ -25,12 +26,13 @@ import {
 import { ClusterFilterBar } from '../components/ClusterFilterBar';
 import { ClusterItemDetail } from '../components/ClusterItemDetail';
 import { ClusterScatter } from '../components/ClusterScatter';
-import { ClusteringJobPanel } from '../components/ClusteringJobPanel';
+import { ClusteringJobPanel, isCancellable } from '../components/ClusteringJobPanel';
 import { KnowledgeBasePicker, knowledgeBaseName } from '../components/KnowledgeBasePicker';
 import { FilterHeader, KeywordCells, KeywordSearch, OptionList, SortHeader } from '../components/TableControls';
-import { IconLayers, IconPlay, IconRefresh, IconUpload } from '../components/icons';
+import { IconLayers, IconPlay, IconRefresh, IconServer, IconUpload } from '../components/icons';
 import { clusterColor, clusterTint } from '../lib/clusterColor';
 import { useClusterEngine } from '../lib/useClusterEngine';
+import { useClusteringJob } from '../lib/useClusteringJob';
 import { useTableQuery } from '../lib/useTableQuery';
 import './Clustering.css';
 
@@ -46,6 +48,11 @@ interface LoadedDataset {
 
 export function ClusteringOverview() {
   const engine = useClusterEngine();
+  /**
+   * 异步作业状态机由页面持有：提交按钮要和「开始聚类」并排放在运行选项里，
+   * 面板只负责"作业跑起来之后"的进度、取消与分页明细。
+   */
+  const jobApi = useClusteringJob();
   const [dataset, setDataset] = useState<LoadedDataset | null>(null);
   const [datasetBusy, setDatasetBusy] = useState(false);
   const [datasetError, setDatasetError] = useState('');
@@ -191,6 +198,36 @@ export function ClusteringOverview() {
 
   const canRun = Boolean(dataset && dataset.items.length >= minItems) && !running && !datasetBusy;
 
+  /**
+   * 同步与异步共用的执行选项。
+   * 两条入口读同一份选项对象，才不会出现"同步用的库和异步用的库不是同一个"
+   * 这类无法解释的差异。
+   */
+  const runOptions = useMemo<ClusteringJobSubmitOptions>(
+    () => ({
+      algorithm: algorithm || undefined,
+      profileId: profileId || undefined,
+      visualize,
+      reduceMethod: visualize ? 'pca' : 'none',
+      purify: purifyOverride,
+      knowledgeBaseId: knowledgeBaseOverride,
+    }),
+    [algorithm, profileId, visualize, purifyOverride, knowledgeBaseOverride],
+  );
+
+  /** 提交后台作业：与「开始聚类」并排，样本大时走这条（提交即返回、可取消、明细分页）。 */
+  const submitJob = useCallback(() => {
+    if (!dataset || dataset.items.length < minItems) {
+      setRunError(`至少需要 ${minItems} 条样本才能提交后台作业。`);
+      return;
+    }
+    setRunError('');
+    void jobApi.submit(
+      dataset.items,
+      dataset.datasetId ? { ...runOptions, datasetId: dataset.datasetId } : runOptions,
+    );
+  }, [dataset, minItems, jobApi, runOptions]);
+
   /** 加载离线基准结果：实时计算失败或时间不够时的兜底入口。 */
   const loadBaseline = useCallback(async () => {
     setBaselineBusy(true);
@@ -212,14 +249,7 @@ export function ClusteringOverview() {
     setRunning(true);
     setRunError('');
     try {
-      const next = await runClustering(dataset.items, {
-        algorithm: algorithm || undefined,
-        profileId: profileId || undefined,
-        visualize,
-        reduceMethod: visualize ? 'pca' : 'none',
-        purify: purifyOverride,
-        knowledgeBaseId: knowledgeBaseOverride,
-      });
+      const next = await runClustering(dataset.items, runOptions);
       setResult(next);
       setActiveClusterId(null);
       setSelectedId(null);
@@ -230,7 +260,7 @@ export function ClusteringOverview() {
     } finally {
       setRunning(false);
     }
-  }, [dataset, algorithm, profileId, visualize, purifyOverride, knowledgeBaseOverride, minItems, setRowClusterFilter]);
+  }, [dataset, runOptions, minItems, setRowClusterFilter]);
 
   // 明细表过滤（含簇筛选/关键词搜索/表头筛选）与排序，全部由 useTableQuery 统一提供。
   const filteredItems = table.rows;
@@ -322,9 +352,6 @@ export function ClusteringOverview() {
               }}
             />
           </label>
-          <button className="btn btn-primary" disabled={!canRun || !engine.ready} onClick={() => void start()}>
-            <IconPlay size={15} />{running ? '聚类进行中…' : '开始聚类'}
-          </button>
         </div>
 
         <div className="clustering-toolbar clustering-options">
@@ -403,6 +430,39 @@ export function ClusteringOverview() {
           disabled={running}
         />
 
+        {/*
+          执行入口只有这一处：同步与异步并排，选项就在正上方。
+          以前异步提交藏在页面底部（离线基准之后），"选完参数还要满页找按钮"，
+          这不是设计取舍，是两次迭代叠加出来的偶然结果——现在纠正掉。
+        */}
+        <div className="clustering-actions">
+          <button
+            className="btn btn-primary"
+            disabled={!canRun || !engine.ready}
+            onClick={() => void start()}
+            title="同步执行：小样本即点即看，结果直接回传"
+          >
+            <IconPlay size={15} />{running ? '聚类进行中…' : '开始聚类'}
+          </button>
+          <button
+            className="btn btn-outline"
+            disabled={!canRun || !engine.ready || jobApi.busy || isCancellable(jobApi.job)}
+            onClick={submitJob}
+            title="异步作业：立刻返回作业 ID，可取消、可刷新，明细按页读取"
+          >
+            <IconServer size={15} />
+            {isCancellable(jobApi.job)
+              ? '后台作业执行中…'
+              : jobApi.busy
+                ? '提交中…'
+                : '提交后台作业'}
+          </button>
+          <span className="small muted clustering-actions-hint">
+            样本少（百条级）用「开始聚类」即点即看；上万条请用「提交后台作业」，
+            提交后可以离开页面，回来还能翻明细。
+          </span>
+        </div>
+
         {dataset?.warnings.map((warning) => (
           <p key={warning} className="clustering-notice">{warning}</p>
         ))}
@@ -411,31 +471,24 @@ export function ClusteringOverview() {
         </p>
         <p className="small muted">
           现场耗时预期：向量嵌入约 10 秒（全量 20,198 条）· 语义净化约 0.3–0.5 秒/条（开启且首条需等模型装载约 20 秒）·
-          无净化全量端到端约 214 秒。样本量越大越建议改用下方异步作业面板。
+          无净化全量端到端约 214 秒。样本量越大越建议直接用上面的「提交后台作业」。
         </p>
       </section>
 
       {/*
-        大数据量入口。同步接口会把整份明细放进一次 HTTP 响应并在请求上等满整个
-        计算过程，样本到万级就不合适了；作业面板走提交/轮询/取消 + 服务端分页。
-
-        刻意紧挨运行选项：它读取的就是上面的算法 / profile / 净化 / 参考数据库，
-        选项与提交必须在一起，否则「这份作业到底用哪个库」只能靠猜。
+        后台作业的进度与结果。提交按钮已经并到上面的运行选项行，这里只在
+        「有作业可看」时出现——不再是一张永远挂在页面中间的空卡片。
       */}
       <ClusteringJobPanel
+        api={jobApi}
         items={dataset?.items ?? []}
         datasetId={dataset?.datasetId ?? null}
-        options={{
-          algorithm: algorithm || undefined,
-          profileId: profileId || undefined,
-          visualize,
-          reduceMethod: visualize ? 'pca' : 'none',
-          purify: purifyOverride,
-          // 与同步「开始聚类」同口径：参考数据库对异步作业同样生效。
-          knowledgeBaseId: knowledgeBaseOverride,
-        }}
+        /* 与同步「开始聚类」同一份选项：参考数据库对异步作业同样生效。 */
+        options={runOptions}
         knowledgeBaseLabel={knowledgeBaseLabel}
         disabled={!engine.ready || datasetBusy}
+        /* 提交按钮已经在上方运行选项行里，这里只展示进度与结果。 */
+        showSubmit={false}
       />
 
       {/*
